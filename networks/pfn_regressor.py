@@ -46,7 +46,8 @@ class ParticleFlowNetworkRegressor(nn.Module):
     def __init__(self, 
         ch_input_dims, 
         ne_input_dims, 
-        sv_input_dims, 
+        sv_input_dims,
+        jet_input_dims,
         num_classes,
         Phi_sizes=(100, 100, 128),
         F_sizes=(100, 100, 100),
@@ -64,7 +65,7 @@ class ParticleFlowNetworkRegressor(nn.Module):
         f_layers = []
         for i in range(len(F_sizes)):
             f_layers.append(nn.Sequential(
-                nn.Linear(3 * Phi_sizes[-1] if i == 0 else F_sizes[i - 1], F_sizes[i]),
+                nn.Linear(jet_input_dims + 3 * Phi_sizes[-1] if i == 0 else F_sizes[i - 1], F_sizes[i]),
                 nn.ReLU())
             )
         f_layers.append(nn.Linear(F_sizes[-1], num_classes))
@@ -72,11 +73,15 @@ class ParticleFlowNetworkRegressor(nn.Module):
             f_layers.append(nn.Softmax(dim=1))
         self.fc = nn.Sequential(*f_layers)
 
-    def forward(self, ch_features, ch_mask, ne_features, ne_mask, sv_features, sv_mask):
+    def forward(self, ch_features, ch_mask, ne_features, ne_mask, sv_features, sv_mask, jet_features):
+        print(ch_features.shape, jet_features.shape)
         ch_x = self.ch_pfn(ch_features, ch_mask)
         ne_x = self.ne_pfn(ne_features, ne_mask)
         sv_x = self.sv_pfn(sv_features, sv_mask)
-        x = torch.cat((ch_x, ne_x, sv_x), dim=1)
+        jet_x = jet_features.squeeze(dim=-1)
+        print(ch_x.shape, ne_x.shape, sv_x.shape, jet_x.shape)
+        x = torch.cat((ch_x, ne_x, sv_x, jet_x), dim=1)
+        print(x.shape)
         return self.fc(x)
 
 
@@ -86,9 +91,10 @@ def get_model(data_config, **kwargs):
     ch_input_dims = len(data_config.input_dicts['ch_features'])
     ne_input_dims = len(data_config.input_dicts['ne_features'])
     sv_input_dims = len(data_config.input_dicts['sv_features'])
+    jet_input_dims = len(data_config.input_dicts['jet_features'])
     num_classes = 1
     model = ParticleFlowNetworkRegressor(
-        ch_input_dims, ne_input_dims, sv_input_dims, num_classes, 
+        ch_input_dims, ne_input_dims, sv_input_dims, jet_input_dims, num_classes, 
         Phi_sizes=Phi_sizes, F_sizes=F_sizes, use_bn=kwargs.get('use_bn', False)
     )
 

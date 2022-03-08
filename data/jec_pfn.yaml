@@ -42,6 +42,12 @@ inputs:
       length: 16
       vars:
          - sv_mask
+   jet_features:
+      length: 1
+      vars:
+         - pt
+         - eta
+         - phi
 
 
 labels:
