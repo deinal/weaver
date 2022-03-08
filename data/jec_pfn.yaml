@@ -1,0 +1,58 @@
+selection:
+
+new_variables:
+   ch_mask: awkward.JaggedArray.ones_like(ch_pt)
+   ne_mask: awkward.JaggedArray.ones_like(ne_pt)
+   sv_mask: awkward.JaggedArray.ones_like(sv_pt)
+
+preprocess:
+   ### method: [manual, auto] - whether to use manually specified parameters for variable standardization
+   method: auto
+   ### data_fraction: fraction of events to use when calculating the mean/scale for the standardization
+   data_fraction:
+
+inputs:
+   ch_features:
+      length: 64
+      vars:
+         - ch_pt
+         - ch_eta
+         - ch_phi
+   ch_mask:
+      length: 64
+      vars:
+         - ch_mask
+   ne_features:
+      length: 64
+      vars:
+         - ne_pt
+         - ne_eta
+         - ne_phi
+   ne_mask:
+      length: 64
+      vars:
+         - ne_mask
+   sv_features:
+      length: 16
+      vars:
+         - sv_pt
+         - sv_eta
+         - sv_phi
+   sv_mask:
+      length: 16
+      vars:
+         - sv_mask
+
+
+labels:
+   ### type can be `simple`, `custom`
+   ### [option 1] use `simple` for binary/multi-class classification, then `value` is a list of 0-1 labels
+   ### [option 2] otherwise use `custom` to define the label, then `value` is a map
+   type: custom
+   value: 
+      target_mass: np.log(pt_gen / pt)
+
+observers:
+   - pt
+
+weights:
