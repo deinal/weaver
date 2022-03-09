@@ -12,6 +12,11 @@ preprocess:
    data_fraction:
 
 inputs:
+   ch_points:
+      length: 64
+      vars: 
+         - ch_eta
+         - ch_phi
    ch_features:
       length: 64
       vars:
@@ -22,6 +27,11 @@ inputs:
       length: 64
       vars:
          - ch_mask
+   ne_points:
+      length: 64
+      vars: 
+         - ne_eta
+         - ne_phi
    ne_features:
       length: 64
       vars:
@@ -32,12 +42,15 @@ inputs:
       length: 64
       vars:
          - ne_mask
+   sv_points:
+      length: 16
+      vars: 
+         - sv_eta
+         - sv_phi
    sv_features:
       length: 16
       vars:
          - sv_pt
-         - sv_eta
-         - sv_phi
    sv_mask:
       length: 16
       vars:
@@ -59,6 +72,5 @@ labels:
       target: np.log(pt_gen / pt)
 
 observers:
-   - pt
 
 weights:

@@ -1,4 +1,3 @@
-from scipy.fftpack import next_fast_len
 import torch
 import torch.nn as nn
 
@@ -14,13 +13,7 @@ class ParticleFlowNetwork(nn.Module):
         List of the feature size for each layer.
     """
 
-    def __init__(self, 
-            input_dims, 
-            Phi_sizes,
-            use_bn=False,
-            **kwargs
-        ):
-
+    def __init__(self, input_dims, Phi_sizes, use_bn=False, **kwargs):
         super(ParticleFlowNetwork, self).__init__(**kwargs)
         # input bn
         self.input_bn = nn.BatchNorm1d(input_dims) if use_bn else nn.Identity(),
@@ -52,7 +45,6 @@ class ParticleFlowNetworkRegressor(nn.Module):
         Phi_sizes=(100, 100, 128),
         F_sizes=(100, 100, 100),
         use_bn=False,
-        for_inference=False,
         **kwargs
     ):
         super(ParticleFlowNetworkRegressor, self).__init__(**kwargs)
@@ -69,19 +61,14 @@ class ParticleFlowNetworkRegressor(nn.Module):
                 nn.ReLU())
             )
         f_layers.append(nn.Linear(F_sizes[-1], num_classes))
-        if for_inference:
-            f_layers.append(nn.Softmax(dim=1))
         self.fc = nn.Sequential(*f_layers)
 
     def forward(self, ch_features, ch_mask, ne_features, ne_mask, sv_features, sv_mask, jet_features):
-        print(ch_features.shape, jet_features.shape)
         ch_x = self.ch_pfn(ch_features, ch_mask)
         ne_x = self.ne_pfn(ne_features, ne_mask)
         sv_x = self.sv_pfn(sv_features, sv_mask)
         jet_x = jet_features.squeeze(dim=-1)
-        print(ch_x.shape, ne_x.shape, sv_x.shape, jet_x.shape)
         x = torch.cat((ch_x, ne_x, sv_x, jet_x), dim=1)
-        print(x.shape)
         return self.fc(x)
 
 
