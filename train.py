@@ -485,6 +485,7 @@ def save_root(args, output_path, data_config, scores, labels, observers):
             continue
         output[k] = v
     for k, v in observers.items():
+        v = v.squeeze()
         if v.ndim > 1:
             _logger.warning('Ignoring %s, not a 1d array.', k)
             continue
@@ -668,7 +669,7 @@ def main(args):
                 from utils.nn.tools import evaluate_onnx
                 test_metric, scores, labels, observers = evaluate_onnx(args.model_prefix, test_loader)
             else:
-                test_metric, scores, labels, observers = evaluate(model, test_loader, dev, epoch=None, for_training=False, tb_helper=tb)
+                test_metric, scores, labels, observers = evaluate(model, test_loader, dev, loss_func=loss_func, epoch=None, for_training=False, tb_helper=tb)
             _logger.info('Test metric %.5f' % test_metric, color='bold')
             del test_loader
 
