@@ -69,7 +69,8 @@ class ParticleFlowNetworkRegressor(nn.Module):
         sv_x = self.sv_pfn(sv_features, sv_mask)
         jet_x = jet_features
         x = torch.cat((ch_x, ne_x, sv_x, jet_x), dim=1)
-        return self.fc(x)
+        output = self.fc(x)
+        return output
 
 
 def get_model(data_config, **kwargs):
@@ -88,9 +89,10 @@ def get_model(data_config, **kwargs):
     model_info = {
         'input_names': list(data_config.input_names),
         'input_shapes': {k: ((1,) + s[1:]) for k, s in data_config.input_shapes.items()},
-        'output_names': ['softmax'],
-        'dynamic_axes': {**{k: {0: 'N', 2: 'n_' + k.split('_')[0]} for k in data_config.input_names}, **{'softmax': {0: 'N'}}},
+        'output_names': ['output'],
+        'dynamic_axes': {**{k: {0: 'N', 2: 'n_' + k.split('_')[0]} for k in data_config.input_names}, **{'output': {0: 'N'}}},
     }
+    model_info['dynamic_axes']['jet_features'] = {0: 'N', 1: 'n_jet'}
 
     print(model, model_info)
     return model, model_info

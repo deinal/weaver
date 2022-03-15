@@ -246,7 +246,8 @@ class ParticleNetRegressor(nn.Module):
         x = self.pn(points, features, mask)
         jet_x = jet_features
         x = torch.cat((x, jet_x), dim=1)
-        return self.fc(x)
+        output = self.fc(x)
+        return output
 
 
 def get_model(data_config, **kwargs):
@@ -278,7 +279,8 @@ def get_model(data_config, **kwargs):
         'input_shapes': {k: ((1,) + s[1:]) for k, s in data_config.input_shapes.items()},
         'output_names': ['output'],
         'dynamic_axes': {**{k: {0: 'N', 2: 'n_' + k.split('_')[0]} for k in data_config.input_names}, **{'output': {0: 'N'}}},
-        }
+    }
+    model_info['dynamic_axes']['jet_features'] = {0: 'N', 1: 'n_jet'}
 
     return model, model_info
 
