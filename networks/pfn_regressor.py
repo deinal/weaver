@@ -67,7 +67,7 @@ class ParticleFlowNetworkRegressor(nn.Module):
         ch_x = self.ch_pfn(ch_features, ch_mask)
         ne_x = self.ne_pfn(ne_features, ne_mask)
         sv_x = self.sv_pfn(sv_features, sv_mask)
-        jet_x = jet_features.squeeze(dim=-1)
+        jet_x = jet_features
         x = torch.cat((ch_x, ne_x, sv_x, jet_x), dim=1)
         return self.fc(x)
 

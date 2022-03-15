@@ -56,7 +56,7 @@ inputs:
       vars:
          - sv_mask
    jet_features:
-      length: 1
+      length:
       vars:
          - pt
          - eta

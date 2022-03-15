@@ -244,7 +244,7 @@ class ParticleNetRegressor(nn.Module):
         ), dim=2)
         mask = torch.cat((ch_mask, ne_mask, sv_mask), dim=2)
         x = self.pn(points, features, mask)
-        jet_x = jet_features.squeeze(dim=-1)
+        jet_x = jet_features
         x = torch.cat((x, jet_x), dim=1)
         return self.fc(x)
 

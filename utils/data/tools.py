@@ -35,14 +35,11 @@ def _pad(a, maxlen, value=0, dtype='float32'):
         return a.pad(maxlen, clip=True).fillna(value).regular().astype(dtype)
     else:
         x = (np.ones((len(a), maxlen)) * value).astype(dtype)
-        if maxlen == 1:
-            return x
-        else:
-            for idx, s in enumerate(a):
-                if not len(s):
-                    continue
-                trunc = s[:maxlen].astype(dtype)
-                x[idx, :len(trunc)] = trunc
+        for idx, s in enumerate(a):
+            if not len(s):
+                continue
+            trunc = s[:maxlen].astype(dtype)
+            x[idx, :len(trunc)] = trunc
         return x
 
 

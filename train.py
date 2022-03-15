@@ -296,6 +296,9 @@ def flops(model, model_info):
 
     model = copy.deepcopy(model).cpu()
     model.eval()
+    
+    for k in model_info['input_names']:
+        model_info['input_shapes'][k] = tuple(shape for shape in model_info['input_shapes'][k] if shape)
 
     inputs = tuple(
         torch.ones(model_info['input_shapes'][k], dtype=torch.float32) for k in model_info['input_names'])
@@ -485,7 +488,6 @@ def save_root(args, output_path, data_config, scores, labels, observers):
             continue
         output[k] = v
     for k, v in observers.items():
-        v = v.squeeze()
         if v.ndim > 1:
             _logger.warning('Ignoring %s, not a 1d array.', k)
             continue
