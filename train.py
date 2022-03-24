@@ -584,16 +584,18 @@ def main(args):
     # so we do not convert it to nn.DataParallel now
     orig_model = model
 
+    # loss function
+    try:
+        loss_func = network_module.get_loss(data_config, **network_options)
+        _logger.info('Using loss function %s with options %s' % (loss_func, network_options))
+    except AttributeError:
+        loss_func = torch.nn.CrossEntropyLoss()
+        _logger.warning('Loss function not defined in %s. Will use `torch.nn.CrossEntropyLoss()` by default.',
+                        args.network_config)
+
+
     if training_mode:
         model = orig_model.to(dev)
-        # loss function
-        try:
-            loss_func = network_module.get_loss(data_config, **network_options)
-            _logger.info('Using loss function %s with options %s' % (loss_func, network_options))
-        except AttributeError:
-            loss_func = torch.nn.CrossEntropyLoss()
-            _logger.warning('Loss function not defined in %s. Will use `torch.nn.CrossEntropyLoss()` by default.',
-                            args.network_config)
 
         # optimizer & learning rate
         opt, scheduler = optim(args, model, dev)
