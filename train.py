@@ -503,7 +503,7 @@ def save_awk(args, output_path, scores, labels, observers):
     :param observers:
     :return:
     """
-    from utils.data.tools import awkward
+    import awkward as ak
     output = {'scores': scores}
     output.update(labels)
     output.update(observers)
@@ -519,7 +519,7 @@ def save_awk(args, output_path, scores, labels, observers):
     _logger.info('Renamed the following variables in the output file: %s', str(name_remap))
     output = {name_remap[k] if k in name_remap else k: v for k, v in output.items()}
 
-    awkward.save(output_path, output, mode='w')
+    ak.save(output_path, output, mode='w')
 
 
 def main(args):

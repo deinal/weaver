@@ -1,12 +1,6 @@
 import numpy as np
 import math
-
-try:
-    import awkward0 as awkward
-except ImportError:
-    import awkward
-    if awkward.__version__[0] == '1':
-        raise ImportError('Please install awkward0 with `pip install awkward0`.')
+import awkward as ak
 
 
 def _concat(arrays, axis=0):
@@ -15,7 +9,7 @@ def _concat(arrays, axis=0):
     if isinstance(arrays[0], np.ndarray):
         return np.concatenate(arrays, axis=axis)
     else:
-        return awkward.concatenate(arrays, axis=axis)
+        return ak.concatenate(arrays, axis=axis)
 
 
 def _stack(arrays, axis=1):
@@ -25,14 +19,16 @@ def _stack(arrays, axis=1):
         return np.stack(arrays, axis=axis)
     else:
         content = np.stack([a.content for a in arrays], axis=axis)
-        return awkward.JaggedArray.fromcounts(arrays[0].counts, content)
+        return ak.unflatten(content, arrays[0].counts)
 
 
 def _pad(a, maxlen, value=0, dtype='float32'):
     if isinstance(a, np.ndarray) and a.ndim >= 2 and a.shape[1] == maxlen:
         return a
-    elif isinstance(a, awkward.JaggedArray):
-        return a.pad(maxlen, clip=True).fillna(value).regular().astype(dtype)
+    elif isinstance(a, ak.highlevel.Array):
+        none_padded_a = ak.pad_none(a, maxlen, clip=True)
+        padded_a = ak.fill_none(none_padded_a, value)
+        return ak.values_astype(padded_a, dtype)
     else:
         x = (np.ones((len(a), maxlen)) * value).astype(dtype)
         for idx, s in enumerate(a):
@@ -49,7 +45,7 @@ def _repeat_pad(a, maxlen, shuffle=False, dtype='float32'):
     if shuffle:
         np.random.shuffle(x)
     x = x[:len(a) * maxlen].reshape((len(a), maxlen))
-    mask = _pad(awkward.JaggedArray.zeros_like(a), maxlen, value=1)
+    mask = _pad(ak.zeros_like(a), maxlen, value=1)
     x = _pad(a, maxlen) + mask * x
     return x.astype(dtype)
 
@@ -58,7 +54,7 @@ def _clip(a, a_min, a_max):
     if isinstance(a, np.ndarray):
         return np.clip(a, a_min, a_max)
     else:
-        return awkward.JaggedArray.fromcounts(a.counts, np.clip(a.content, a_min, a_max))
+        return ak.unflatten(np.clip(a.content, a_min, a_max), a.counts)
 
 
 def _knn(support, query, k, n_jobs=1):
@@ -111,7 +107,7 @@ def _p4_from_ptetaphie(*args):
     return TLorentzVectorArray.from_ptetaphie(*args)
 
 
-def _get_variable_names(expr, exclude=['awkward', 'np', 'numpy', 'math']):
+def _get_variable_names(expr, exclude=['ak', 'np', 'numpy', 'math']):
     import ast
     root = ast.parse(expr)
     return sorted({node.id for node in ast.walk(root) if isinstance(
@@ -121,7 +117,7 @@ def _get_variable_names(expr, exclude=['awkward', 'np', 'numpy', 'math']):
 def _eval_expr(expr, table):
     tmp = {k: table[k] for k in _get_variable_names(expr)}
     tmp.update(
-        {'math': math, 'np': np, 'awkward': awkward, '_concat': _concat, '_stack': _stack, '_pad': _pad,
+        {'math': math, 'np': np, 'ak': ak, '_concat': _concat, '_stack': _stack, '_pad': _pad,
          '_repeat_pad': _repeat_pad, '_clip': _clip, '_batch_knn': _batch_knn,
          '_batch_permute_indices': _batch_permute_indices, '_batch_argsort': _batch_argsort,
          '_batch_gather': _batch_gather, '_p4_from_xyzt': _p4_from_xyzt, '_p4_from_ptetaphie': _p4_from_ptetaphie})

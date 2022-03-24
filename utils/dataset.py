@@ -2,6 +2,7 @@ import os
 import glob
 import copy
 import numpy as np
+import awkward as ak
 import math
 import torch.utils.data
 
@@ -56,6 +57,8 @@ def _finalize_inputs(table, data_config):
         if params['length'] is not None:
             pad_fn = _repeat_pad if params['pad_mode'] == 'wrap' else partial(_pad, value=params['pad_value'])
             table[k] = pad_fn(table[k], params['length'])
+        if isinstance(table[k], ak.highlevel.Array):
+            table[k] = ak.to_numpy(table[k])
         # check for NaN
         if np.any(np.isnan(table[k])):
             _logger.warning(
@@ -270,11 +273,11 @@ class _SimpleIter(object):
 
     def get_data(self, i):
         # inputs
-        X = {k: self.table['_' + k][i].copy() for k in self._data_config.input_names}
+        X = {k: np.copy(self.table['_' + k][i]) for k in self._data_config.input_names}
         # labels
-        y = {k: self.table[k][i].copy() for k in self._data_config.label_names}
+        y = {k: np.copy(self.table[k][i]) for k in self._data_config.label_names}
         # observers / monitor variables
-        Z = {k: self.table[k][i].copy() for k in self._data_config.z_variables}
+        Z = {k: np.copy(self.table[k][i]) for k in self._data_config.z_variables}
         return X, y, Z
 
 
