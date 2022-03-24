@@ -131,8 +131,8 @@ def _preprocess(table, data_config, options):
     return indices
 
 
-def _load_next(data_config, filelist, load_range, options):
-    table = _read_files(filelist, data_config.load_branches, load_range, treename=data_config.treename)
+def _load_next(data_config, filelist, load_range, options, s3_endpoint):
+    table = _read_files(filelist, data_config.load_branches, load_range, s3_endpoint, treename=data_config.treename)
     indices = _preprocess(table, data_config, options)
     return table, indices
 
@@ -266,9 +266,9 @@ class _SimpleIter(object):
         # _logger.info('Start fetching next batch, len(filelist)=%d, load_range=%s'%(len(filelist), load_range))
         if self._async_load:
             self.prefetch = self.executor.submit(_load_next, self._data_config,
-                                                 filelist, load_range, self._sampler_options)
+                                                 filelist, load_range, self._sampler_options, self._s3_endpoint)
         else:
-            self.prefetch = _load_next(self._data_config, filelist, load_range, self._sampler_options)
+            self.prefetch = _load_next(self._data_config, filelist, load_range, self._sampler_options, self._s3_endpoint)
         self.ipos += self._fetch_step
 
     def get_data(self, i):
@@ -307,7 +307,8 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
 
     def __init__(self, filelist, data_config_file, for_training=True, load_range_and_fraction=None,
                  fetch_by_files=False, fetch_step=0.01, file_fraction=1, remake_weights=False, up_sample=True,
-                 weight_scale=1, max_resample=10, async_load=True, infinity_mode=False, in_memory=False):
+                 weight_scale=1, max_resample=10, async_load=True, infinity_mode=False, in_memory=False,
+                 s3_endpoint=''):
         self._iters = {} if infinity_mode or in_memory else None
         _init_args = set(self.__dict__.keys())
         self._init_filelist = filelist if isinstance(filelist, (list, tuple)) else glob.glob(filelist)
@@ -321,6 +322,7 @@ class SimpleIterDataset(torch.utils.data.IterableDataset):
         self._async_load = async_load
         self._infinity_mode = infinity_mode
         self._in_memory = in_memory
+        self._s3_endpoint = s3_endpoint
 
         # ==== sampling parameters ====
         self._sampler_options = {

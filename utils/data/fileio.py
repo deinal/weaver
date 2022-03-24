@@ -49,17 +49,22 @@ def _read_awkd(filepath, branches, load_range=None):
     return outputs
 
 
-def _read_files(filelist, branches, load_range=None, show_progressbar=False, **kwargs):
+def _read_files(filelist, branches, load_range=None, s3_endpoint='', show_progressbar=False, **kwargs):
     import os
+    import s3fs
     from collections import defaultdict
     branches = list(branches)
     table = defaultdict(list)
     if show_progressbar:
         filelist = tqdm.tqdm(filelist)
+    if s3_endpoint:
+        s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': s3_endpoint})
     for filepath in filelist:
         ext = os.path.splitext(filepath)[1]
         if ext not in ('.h5', '.root', '.awkd'):
             raise RuntimeError('File %s of type `%s` is not supported!' % (filepath, ext))
+        if s3_endpoint:
+            filepath = s3.open(filepath)
         try:
             if ext == '.h5':
                 a = _read_hdf5(filepath, branches, load_range=load_range)
@@ -71,6 +76,8 @@ def _read_files(filelist, branches, load_range=None, show_progressbar=False, **k
             a = None
             _logger.error('When reading file %s:', filepath)
             _logger.error(traceback.format_exc())
+        if s3_endpoint:
+            filepath.close()
         if a is not None:
             for name in branches:
                 table[name].append(ak.values_astype(a[name], 'float32'))

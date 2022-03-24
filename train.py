@@ -115,6 +115,7 @@ parser.add_argument('--print', action='store_true', default=False,
                     help='do not run training/prediction but only print model information, e.g., FLOPs and number of parameters of a model')
 parser.add_argument('--profile', action='store_true', default=False,
                     help='run the profiler')
+parser.add_argument('--s3-endpoint', type=str, default='', help='specify endpoint for training files if they are stored s3, e.g. https://s3.cern.ch')
 
 
 def to_filelist(args, mode='train'):
@@ -125,7 +126,10 @@ def to_filelist(args, mode='train'):
     else:
         raise NotImplementedError('Invalid mode %s' % mode)
 
-    filelist = sum([glob.glob(f) for f in flist], [])
+    if args.s3_endpoint:
+        filelist = flist
+    else:
+        filelist = sum([glob.glob(f) for f in flist], [])
     np.random.shuffle(filelist)
 
     if args.copy_inputs:
@@ -181,14 +185,16 @@ def train_load(args):
                                    fetch_by_files=args.fetch_by_files,
                                    fetch_step=args.fetch_step,
                                    infinity_mode=args.steps_per_epoch is not None,
-                                   in_memory=args.in_memory)
+                                   in_memory=args.in_memory,
+                                   s3_endpoint=args.s3_endpoint)
     val_data = SimpleIterDataset(val_files, args.data_config, for_training=True,
                                  load_range_and_fraction=(val_range, args.data_fraction),
                                  file_fraction=args.file_fraction,
                                  fetch_by_files=args.fetch_by_files,
                                  fetch_step=args.fetch_step,
                                  infinity_mode=args.steps_per_epoch_val is not None,
-                                 in_memory=args.in_memory)
+                                 in_memory=args.in_memory,
+                                 s3_endpoint=args.s3_endpoint)
     train_loader = DataLoader(train_data, batch_size=args.batch_size, drop_last=True, pin_memory=True,
                               num_workers=min(args.num_workers, int(len(train_files) * args.file_fraction)),
                               persistent_workers=args.num_workers > 0 and args.steps_per_epoch is not None)
@@ -220,7 +226,10 @@ def test_load(args):
                 split_dict[name] = int(split)
         else:
             name, fp = '', f
-        files = glob.glob(fp)
+        if args.s3_endpoint:
+            files = [fp]
+        else:
+            files = glob.glob(fp)
         if name in file_dict:
             file_dict[name] += files
         else:
@@ -242,7 +251,8 @@ def test_load(args):
         num_workers = min(args.num_workers, len(filelist))
         test_data = SimpleIterDataset(filelist, args.data_config, for_training=False,
                                       load_range_and_fraction=((0, 1), args.data_fraction),
-                                      fetch_by_files=True, fetch_step=1)
+                                      fetch_by_files=True, fetch_step=1,
+                                      s3_endpoint=args.s3_endpoint)
         test_loader = DataLoader(test_data, num_workers=num_workers, batch_size=args.batch_size, drop_last=False,
                                  pin_memory=True)
         return test_loader
