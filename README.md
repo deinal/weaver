@@ -165,7 +165,7 @@ Note:
 - for small datasets, it's more efficient to use `--in-memory` to load the whole dataset (and perform the preprocessing) only once and keep it in memory for the entire run.
 - when training on remote files (e.g., from EOS filesystem), one could consider adding `--copy-inputs` so the files are copied to the local workdir to speed up data loading.
 - training can be resumed by adding `--load-epoch [last_epoch]`: with this option, the training will continue at `last_epoch + 1`, and the optimizer states and the learning rate will be properly restored.
-- when training on data stored in an s3 bucket the credentials are assumed to be in one of the default locations `.aws/config` or `.aws/credentials`.
+- when training on data stored in an s3 bucket the credentials are assumed to be in one of the default locations `.aws/config` or `.aws/credentials`, or as the environmental variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 
 ### Prediction/Inference
 
