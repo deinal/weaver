@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import s3fs
 import shutil
 import glob
 import argparse
@@ -115,8 +116,10 @@ parser.add_argument('--print', action='store_true', default=False,
                     help='do not run training/prediction but only print model information, e.g., FLOPs and number of parameters of a model')
 parser.add_argument('--profile', action='store_true', default=False,
                     help='run the profiler')
-parser.add_argument('--s3-endpoint', type=str, default='', help='specify endpoint for training files if they are stored s3, e.g. https://s3.cern.ch')
-
+parser.add_argument('--s3-endpoint', type=str, default='',
+                    help='specify endpoint for training files if they are stored s3, e.g. https://s3.cern.ch')
+parser.add_argument('--s3-model', type=str, default='', 
+                    help='path to store best model on s3')
 
 def to_filelist(args, mode='train'):
     if mode == 'train':
@@ -271,26 +274,34 @@ def onnx(args, model, data_config, model_info):
     :param model_info:
     :return:
     """
-    assert (args.export_onnx.endswith('.onnx'))
+    export_path = args.export_onnx
+    assert (export_path.endswith('.onnx'))
     model_path = args.model_prefix
     _logger.info('Exporting model %s to ONNX' % model_path)
     model.load_state_dict(torch.load(model_path, map_location='cpu'))
     model = model.cpu()
     model.eval()
 
-    os.makedirs(os.path.dirname(args.export_onnx), exist_ok=True)
+    if args.s3_endpoint:
+        s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': args.s3_endpoint})
+        export_path = s3.open(export_path, 'wb')
+    else:
+        os.makedirs(os.path.dirname(export_path), exist_ok=True)
     inputs = tuple(
         torch.ones(model_info['input_shapes'][k], dtype=torch.float32) for k in model_info['input_names'])
-    torch.onnx.export(model, inputs, args.export_onnx,
+    torch.onnx.export(model, inputs, export_path,
                       input_names=model_info['input_names'],
                       output_names=model_info['output_names'],
                       dynamic_axes=model_info.get('dynamic_axes', None),
                       opset_version=13)
     _logger.info('ONNX model saved to %s', args.export_onnx)
 
-    preprocessing_json = os.path.join(os.path.dirname(args.export_onnx), 'preprocess.json')
-    data_config.export_json(preprocessing_json)
-    _logger.info('Preprocessing parameters saved to %s', preprocessing_json)
+    if not args.s3_endpoint:
+        preprocessing_json = os.path.join(os.path.dirname(args.export_onnx), 'preprocess.json')
+        data_config.export_json(preprocessing_json)
+        _logger.info('Preprocessing parameters saved to %s', preprocessing_json)
+    if args.s3_endpoint:
+        export_path.close()
 
 
 def flops(model, model_info):
@@ -704,6 +715,11 @@ def main(args):
                     save_awk(args, output_path, scores, labels, observers)
                 _logger.info('Written output to %s' % output_path, color='bold')
 
+    # store best model on s3
+    if training_mode and args.s3_model:
+        _logger.info('uploading best model to s3')
+        s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': args.s3_endpoint})
+        s3.upload(args.model_prefix + '_best_epoch_state.pt', args.s3_model)
 
 if __name__ == '__main__':
     args = parser.parse_args()
