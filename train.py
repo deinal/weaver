@@ -278,15 +278,18 @@ def onnx(args, model, data_config, model_info):
     assert (export_path.endswith('.onnx'))
     model_path = args.model_prefix
     _logger.info('Exporting model %s to ONNX' % model_path)
+
+    if args.s3_endpoint:
+        s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': args.s3_endpoint})
+        model_path = s3.open(model_path, 'rb')
+        export_path = s3.open(export_path, 'wb')
+    else:
+        os.makedirs(os.path.dirname(export_path), exist_ok=True)
+    
     model.load_state_dict(torch.load(model_path, map_location='cpu'))
     model = model.cpu()
     model.eval()
 
-    if args.s3_endpoint:
-        s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': args.s3_endpoint})
-        export_path = s3.open(export_path, 'wb')
-    else:
-        os.makedirs(os.path.dirname(export_path), exist_ok=True)
     inputs = tuple(
         torch.ones(model_info['input_shapes'][k], dtype=torch.float32) for k in model_info['input_names'])
     torch.onnx.export(model, inputs, export_path,
@@ -301,6 +304,7 @@ def onnx(args, model, data_config, model_info):
         data_config.export_json(preprocessing_json)
         _logger.info('Preprocessing parameters saved to %s', preprocessing_json)
     if args.s3_endpoint:
+        model_path.close()
         export_path.close()
 
 
