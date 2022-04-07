@@ -1,11 +1,15 @@
 import math
 import tqdm
 import traceback
+import s3fs
 import uproot
 import awkward as ak
 from .tools import _concat
 from ..logger import _logger
 
+def get_s3_client(s3_endpoint):
+    s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': s3_endpoint})
+    return s3
 
 def _read_hdf5(filepath, branches, load_range=None):
     import tables
@@ -51,19 +55,18 @@ def _read_awkd(filepath, branches, load_range=None):
 
 def _read_files(filelist, branches, load_range=None, s3_endpoint='', show_progressbar=False, **kwargs):
     import os
-    import s3fs
     from collections import defaultdict
     branches = list(branches)
     table = defaultdict(list)
     if show_progressbar:
         filelist = tqdm.tqdm(filelist)
     if s3_endpoint:
-        s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': s3_endpoint})
+        s3 = get_s3_client(s3_endpoint)
     for filepath in filelist:
         ext = os.path.splitext(filepath)[1]
         if ext not in ('.h5', '.root', '.awkd'):
             raise RuntimeError('File %s of type `%s` is not supported!' % (filepath, ext))
-        if s3_endpoint:
+        if s3:
             filepath = s3.open(filepath)
         try:
             if ext == '.h5':
@@ -76,7 +79,7 @@ def _read_files(filelist, branches, load_range=None, s3_endpoint='', show_progre
             a = None
             _logger.error('When reading file %s:', filepath)
             _logger.error(traceback.format_exc())
-        if s3_endpoint:
+        if s3:
             filepath.close()
         if a is not None:
             for name in branches:

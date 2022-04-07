@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import os
-import s3fs
 import shutil
 import glob
 import argparse
@@ -15,6 +14,7 @@ from importlib import import_module
 import ast
 from utils.logger import _logger, _configLogger
 from utils.dataset import SimpleIterDataset
+from utils.data.fileio import get_s3_client
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--regression-mode', action='store_true', default=False,
@@ -50,6 +50,8 @@ parser.add_argument('--lr-finder', type=str, default=None,
                     help='run learning rate finder instead of the actual training; format: ``start_lr, end_lr, num_iters``')
 parser.add_argument('--tensorboard', type=str, default=None,
                     help='create a tensorboard summary writer with the given comment')
+parser.add_argument('--tensorboard-log-dir', type=str, default=None,
+                    help='save directory location for tensorboard run, overrides tensorboard comment')
 parser.add_argument('--tensorboard-custom-fn', type=str, default=None,
                     help='the path of the python script containing a user-specified function `get_tensorboard_custom_fn`, '
                          'to display custom information per mini-batch or per epoch, during the training, validation or test.')
@@ -280,7 +282,7 @@ def onnx(args, model, data_config, model_info):
     _logger.info('Exporting model %s to ONNX' % model_path)
 
     if args.s3_endpoint:
-        s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': args.s3_endpoint})
+        s3 = get_s3_client(args.s3_endpoint)
         model_path = s3.open(model_path, 'rb')
         export_path = s3.open(export_path, 'wb')
     else:
@@ -299,13 +301,13 @@ def onnx(args, model, data_config, model_info):
                       opset_version=13)
     _logger.info('ONNX model saved to %s', args.export_onnx)
 
-    if not args.s3_endpoint:
-        preprocessing_json = os.path.join(os.path.dirname(args.export_onnx), 'preprocess.json')
-        data_config.export_json(preprocessing_json)
-        _logger.info('Preprocessing parameters saved to %s', preprocessing_json)
     if args.s3_endpoint:
         model_path.close()
         export_path.close()
+    else:
+        preprocessing_json = os.path.join(os.path.dirname(args.export_onnx), 'preprocess.json')
+        data_config.export_json(preprocessing_json)
+        _logger.info('Preprocessing parameters saved to %s', preprocessing_json)
 
 
 def flops(model, model_info):
@@ -599,9 +601,13 @@ def main(args):
         onnx(args, model, data_config, model_info)
         return
 
-    if args.tensorboard:
+    if args.tensorboard or args.tensorboard_log_dir:
         from utils.nn.tools import TensorboardHelper
-        tb = TensorboardHelper(tb_comment=args.tensorboard, tb_custom_fn=args.tensorboard_custom_fn)
+        tb = TensorboardHelper(
+            tb_log_dir=args.tensorboard_log_dir,
+            tb_comment=args.tensorboard, 
+            tb_custom_fn=args.tensorboard_custom_fn
+            )
     else:
         tb = None
 
@@ -722,7 +728,7 @@ def main(args):
     # store best model on s3
     if training_mode and args.s3_model:
         _logger.info('uploading best model to s3')
-        s3 = s3fs.core.S3FileSystem(client_kwargs={'endpoint_url': args.s3_endpoint})
+        s3 = get_s3_client(args.s3_endpoint)
         s3.upload(args.model_prefix + '_best_epoch_state.pt', args.s3_model)
 
 if __name__ == '__main__':
