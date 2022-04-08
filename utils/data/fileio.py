@@ -62,6 +62,7 @@ def _read_files(filelist, branches, load_range=None, s3_endpoint='', show_progre
         filelist = tqdm.tqdm(filelist)
     if s3_endpoint:
         s3 = get_s3_client(s3_endpoint)
+        filelist = sum([s3.glob(f) for f in filelist], [])
     for filepath in filelist:
         ext = os.path.splitext(filepath)[1]
         if ext not in ('.h5', '.root', '.awkd'):

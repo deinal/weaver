@@ -224,7 +224,7 @@ def test_load(args):
     file_dict = {}
     split_dict = {}
     for f in args.data_test:
-        if ':' in f:
+        if ':' in f.split('s3://')[-1]:
             name, fp = f.split(':')
             if '%' in name:
                 name, split = name.split('%')
