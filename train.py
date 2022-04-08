@@ -276,6 +276,7 @@ def onnx(args, model, data_config, model_info):
     model_path = args.model_prefix
     _logger.info('Exporting model %s to ONNX' % model_path)
 
+    s3 = None
     if export_path.startswith('s3'):
         s3 = get_s3_client()
         model_path = s3.open(model_path, 'rb')
