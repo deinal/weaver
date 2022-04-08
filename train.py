@@ -118,8 +118,6 @@ parser.add_argument('--print', action='store_true', default=False,
                     help='do not run training/prediction but only print model information, e.g., FLOPs and number of parameters of a model')
 parser.add_argument('--profile', action='store_true', default=False,
                     help='run the profiler')
-parser.add_argument('--s3-endpoint', type=str, default='',
-                    help='specify endpoint for training files if they are stored s3, e.g. https://s3.cern.ch')
 parser.add_argument('--s3-model', type=str, default='', 
                     help='path to store best model on s3')
 
@@ -131,7 +129,7 @@ def to_filelist(args, mode='train'):
     else:
         raise NotImplementedError('Invalid mode %s' % mode)
 
-    if args.s3_endpoint:
+    if flist[0].startswith('s3'):
         filelist = flist
     else:
         filelist = sum([glob.glob(f) for f in flist], [])
@@ -190,16 +188,14 @@ def train_load(args):
                                    fetch_by_files=args.fetch_by_files,
                                    fetch_step=args.fetch_step,
                                    infinity_mode=args.steps_per_epoch is not None,
-                                   in_memory=args.in_memory,
-                                   s3_endpoint=args.s3_endpoint)
+                                   in_memory=args.in_memory)
     val_data = SimpleIterDataset(val_files, args.data_config, for_training=True,
                                  load_range_and_fraction=(val_range, args.data_fraction),
                                  file_fraction=args.file_fraction,
                                  fetch_by_files=args.fetch_by_files,
                                  fetch_step=args.fetch_step,
                                  infinity_mode=args.steps_per_epoch_val is not None,
-                                 in_memory=args.in_memory,
-                                 s3_endpoint=args.s3_endpoint)
+                                 in_memory=args.in_memory)
     train_loader = DataLoader(train_data, batch_size=args.batch_size, drop_last=True, pin_memory=True,
                               num_workers=min(args.num_workers, int(len(train_files) * args.file_fraction)),
                               persistent_workers=args.num_workers > 0 and args.steps_per_epoch is not None)
@@ -231,7 +227,7 @@ def test_load(args):
                 split_dict[name] = int(split)
         else:
             name, fp = '', f
-        if args.s3_endpoint:
+        if fp.startswith('s3'):
             files = [fp]
         else:
             files = glob.glob(fp)
@@ -256,8 +252,7 @@ def test_load(args):
         num_workers = min(args.num_workers, len(filelist))
         test_data = SimpleIterDataset(filelist, args.data_config, for_training=False,
                                       load_range_and_fraction=((0, 1), args.data_fraction),
-                                      fetch_by_files=True, fetch_step=1,
-                                      s3_endpoint=args.s3_endpoint)
+                                      fetch_by_files=True, fetch_step=1)
         test_loader = DataLoader(test_data, num_workers=num_workers, batch_size=args.batch_size, drop_last=False,
                                  pin_memory=True)
         return test_loader
@@ -281,8 +276,8 @@ def onnx(args, model, data_config, model_info):
     model_path = args.model_prefix
     _logger.info('Exporting model %s to ONNX' % model_path)
 
-    if args.s3_endpoint:
-        s3 = get_s3_client(args.s3_endpoint)
+    if export_path.startswith('s3'):
+        s3 = get_s3_client()
         model_path = s3.open(model_path, 'rb')
         export_path = s3.open(export_path, 'wb')
     else:
@@ -301,7 +296,7 @@ def onnx(args, model, data_config, model_info):
                       opset_version=13)
     _logger.info('ONNX model saved to %s', args.export_onnx)
 
-    if args.s3_endpoint:
+    if s3:
         model_path.close()
         export_path.close()
     else:
@@ -728,7 +723,7 @@ def main(args):
     # store best model on s3
     if training_mode and args.s3_model:
         _logger.info('uploading best model to s3')
-        s3 = get_s3_client(args.s3_endpoint)
+        s3 = get_s3_client()
         s3.upload(args.model_prefix + '_best_epoch_state.pt', args.s3_model)
 
 if __name__ == '__main__':
