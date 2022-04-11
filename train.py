@@ -277,9 +277,13 @@ def onnx(args, model, data_config, model_info):
     _logger.info('Exporting model %s to ONNX' % model_path)
 
     s3 = None
-    if export_path.startswith('s3'):
+    if export_path.startswith('s3') or model_path.startswith('s3'):
         s3 = get_s3_client()
+    
+    if model_path.startswith('s3'):
         model_path = s3.open(model_path, 'rb')
+        
+    if export_path.startswith('s3'):
         export_path = s3.open(export_path, 'wb')
     else:
         os.makedirs(os.path.dirname(export_path), exist_ok=True)
@@ -297,8 +301,9 @@ def onnx(args, model, data_config, model_info):
                       opset_version=13)
     _logger.info('ONNX model saved to %s', args.export_onnx)
 
-    if s3:
+    if model_path.startswith('s3'):
         model_path.close()
+    if export_path.startswith('s3'):
         export_path.close()
     else:
         preprocessing_json = os.path.join(os.path.dirname(args.export_onnx), 'preprocess.json')
