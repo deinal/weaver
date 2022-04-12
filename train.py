@@ -129,7 +129,7 @@ def to_filelist(args, mode='train'):
     else:
         raise NotImplementedError('Invalid mode %s' % mode)
 
-    if flist[0].startswith('s3'):
+    if not flist or flist[0].startswith('s3'):
         filelist = flist
     else:
         filelist = sum([glob.glob(f) for f in flist], [])
@@ -301,9 +301,9 @@ def onnx(args, model, data_config, model_info):
                       opset_version=13)
     _logger.info('ONNX model saved to %s', args.export_onnx)
 
-    if model_path.startswith('s3'):
+    if args.model_prefix.startswith('s3'):
         model_path.close()
-    if export_path.startswith('s3'):
+    if args.export_onnx.startswith('s3'):
         export_path.close()
     else:
         preprocessing_json = os.path.join(os.path.dirname(args.export_onnx), 'preprocess.json')
