@@ -108,6 +108,10 @@ parser.add_argument('--predict-output', type=str,
 parser.add_argument('--export-onnx', type=str, default=None,
                     help='export the PyTorch model to ONNX model and save it at the given path (path must ends w/ .onnx); '
                          'needs to set `--data-config`, `--network-config`, and `--model-prefix` (requires the full model path)')
+parser.add_argument('--triton-config', type=str, default=None,
+                    help='path to store triton configuration file when exporting onnx; '
+                         'config https://github.com/triton-inference-server/server/blob/main/docs/model_configuration.md'
+                         'placement https://github.com/triton-inference-server/server/blob/main/docs/model_repository.md#onnx-models')
 parser.add_argument('--io-test', action='store_true', default=False,
                     help='test throughput of the dataloader')
 parser.add_argument('--copy-inputs', action='store_true', default=False,
@@ -287,17 +291,18 @@ def onnx(args, model, data_config, model_info):
         export_path = s3.open(export_path, 'wb')
     else:
         os.makedirs(os.path.dirname(export_path), exist_ok=True)
-    
+
     model.load_state_dict(torch.load(model_path, map_location='cpu'))
     model = model.cpu()
     model.eval()
 
     inputs = tuple(
         torch.ones(model_info['input_shapes'][k], dtype=torch.float32) for k in model_info['input_names'])
+    dynamic_axes = model_info.get('dynamic_axes', None)
     torch.onnx.export(model, inputs, export_path,
                       input_names=model_info['input_names'],
                       output_names=model_info['output_names'],
-                      dynamic_axes=model_info.get('dynamic_axes', None),
+                      dynamic_axes=dynamic_axes,
                       opset_version=13)
     _logger.info('ONNX model saved to %s', args.export_onnx)
 
@@ -310,6 +315,54 @@ def onnx(args, model, data_config, model_info):
         data_config.export_json(preprocessing_json)
         _logger.info('Preprocessing parameters saved to %s', preprocessing_json)
 
+    if args.triton_config:
+        lines = []
+        lines.append('platform: "onnxruntime_onnx"')
+        lines.append('backend: "onnxruntime"')
+        if dynamic_axes:
+            lines.append('max_batch_size: 100000')
+
+        lines.append('input [')
+        for name in model_info['input_names']:
+            lines.append('  {')
+            lines.append(f'    name: "{name}"')
+            lines.append('    data_type: TYPE_FP32')
+            if dynamic_axes:
+                dims = list(model_info['input_shapes'][name])
+                for axes in dynamic_axes[name]:
+                    dims[axes] = -1
+                dims = str(dims[1:])
+            else:
+                dims = str(list(model_info['input_shapes'][name]))
+            lines.append(f'    dims: {dims}')
+            lines.append('  },')
+        lines[-1] = '  }'
+        lines.append(']')
+
+        lines.append('output [')
+        for name in model_info['output_names']:
+            lines.append('  {')
+            lines.append(f'    name: "{name}"')
+            lines.append('    data_type: TYPE_FP32')
+            if dynamic_axes:
+                dims = list(model_info['output_shapes'][name])
+                for axes in dynamic_axes[name]:
+                    dims[axes] = -1
+                dims = str(dims[1:])
+            else:
+                dims = str(list(model_info['output_shapes'][name]))
+            lines.append(f'    dims: {dims}')
+            lines.append('  },')
+        lines[-1] = '  }'
+        lines.append(']')
+
+        if args.triton_config.startswith('s3'):
+            with s3.open(args.triton_config, 'w') as f:
+                f.write('\n'.join(lines))
+        else:
+            with open(args.triton_config, 'w') as f:
+                f.write('\n'.join(lines))
+        _logger.info('Triton config saved to %s', args.triton_config)
 
 def flops(model, model_info):
     """

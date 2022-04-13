@@ -90,9 +90,11 @@ def get_model(data_config, **kwargs):
         'input_names': list(data_config.input_names),
         'input_shapes': {k: ((1,) + s[1:]) for k, s in data_config.input_shapes.items()},
         'output_names': ['output'],
+        'output_shapes': {'output': (1, 1)},
         'dynamic_axes': {**{k: {0: 'N', 2: 'n_' + k.split('_')[0]} for k in data_config.input_names}, **{'output': {0: 'N'}}},
     }
     model_info['dynamic_axes']['jet_features'] = {0: 'N', 1: 'n_jet'}
+    model_info['dynamic_axes']['output'] = {0: 'N'}
 
     print(model, model_info)
     return model, model_info
