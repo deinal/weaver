@@ -1,0 +1,29 @@
+
+syntax = "proto3";
+
+package inference;
+
+enum DataType {
+    TYPE_INVALID = 0;
+    TYPE_FP32 = 1;
+}
+  
+message ModelInput {
+    string name = 1;
+    DataType data_type = 2;
+    repeated int64 dims = 3;
+}
+
+message ModelOutput {
+    string name = 1;
+    DataType data_type = 2;
+    repeated int64 dims = 3;
+}
+
+message ModelConfig {
+    string platform = 1;
+    int32 max_batch_size = 2;
+
+    repeated ModelInput input = 3;
+    repeated ModelOutput output = 4;
+}

@@ -109,9 +109,7 @@ parser.add_argument('--export-onnx', type=str, default=None,
                     help='export the PyTorch model to ONNX model and save it at the given path (path must ends w/ .onnx); '
                          'needs to set `--data-config`, `--network-config`, and `--model-prefix` (requires the full model path)')
 parser.add_argument('--triton-config', type=str, default=None,
-                    help='path to store triton configuration file when exporting onnx; '
-                         'config https://github.com/triton-inference-server/server/blob/main/docs/model_configuration.md'
-                         'placement https://github.com/triton-inference-server/server/blob/main/docs/model_repository.md#onnx-models')
+                    help='path to store triton configuration file when exporting onnx')
 parser.add_argument('--io-test', action='store_true', default=False,
                     help='test throughput of the dataloader')
 parser.add_argument('--copy-inputs', action='store_true', default=False,
@@ -316,52 +314,45 @@ def onnx(args, model, data_config, model_info):
         _logger.info('Preprocessing parameters saved to %s', preprocessing_json)
 
     if args.triton_config:
-        lines = []
-        lines.append('platform: "onnxruntime_onnx"')
-        lines.append('backend: "onnxruntime"')
+        from google.protobuf import text_format
+        import utils.serving.model_config_pb2 as model_config_pb2
+
+        model_config = model_config_pb2.ModelConfig()
+
+        model_config.platform = 'onnxruntime_onnx'
         if dynamic_axes:
-            lines.append('max_batch_size: 100000')
+            model_config.max_batch_size = 100000
 
-        lines.append('input [')
+        data_type = model_config_pb2.DataType
+
         for name in model_info['input_names']:
-            lines.append('  {')
-            lines.append(f'    name: "{name}"')
-            lines.append('    data_type: TYPE_FP32')
+            model_input = model_config.input.add()
+            model_input.name = name
+            model_input.data_type = data_type.TYPE_FP32
+            dims = list(model_info['input_shapes'][name])
             if dynamic_axes:
-                dims = list(model_info['input_shapes'][name])
                 for axes in dynamic_axes[name]:
                     dims[axes] = -1
-                dims = str(dims[1:])
-            else:
-                dims = str(list(model_info['input_shapes'][name]))
-            lines.append(f'    dims: {dims}')
-            lines.append('  },')
-        lines[-1] = '  }'
-        lines.append(']')
+                dims = dims[1:]
+            model_input.dims.extend(dims)
 
-        lines.append('output [')
         for name in model_info['output_names']:
-            lines.append('  {')
-            lines.append(f'    name: "{name}"')
-            lines.append('    data_type: TYPE_FP32')
+            model_output = model_config.output.add()
+            model_output.name = name
+            model_output.data_type = data_type.TYPE_FP32
+            dims = list(model_info['output_shapes'][name])
             if dynamic_axes:
-                dims = list(model_info['output_shapes'][name])
                 for axes in dynamic_axes[name]:
                     dims[axes] = -1
-                dims = str(dims[1:])
-            else:
-                dims = str(list(model_info['output_shapes'][name]))
-            lines.append(f'    dims: {dims}')
-            lines.append('  },')
-        lines[-1] = '  }'
-        lines.append(']')
+                dims = dims[1:]
+            model_output.dims.extend(dims)
 
         if args.triton_config.startswith('s3'):
             with s3.open(args.triton_config, 'w') as f:
-                f.write('\n'.join(lines))
+                text_format.PrintMessage(model_config, f, use_short_repeated_primitives=True)
         else:
             with open(args.triton_config, 'w') as f:
-                f.write('\n'.join(lines))
+                text_format.PrintMessage(model_config, f, use_short_repeated_primitives=True)
         _logger.info('Triton config saved to %s', args.triton_config)
 
 def flops(model, model_info):
