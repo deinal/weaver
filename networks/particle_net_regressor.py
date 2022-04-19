@@ -252,11 +252,11 @@ class ParticleNetRegressor(nn.Module):
 
 def get_model(data_config, **kwargs):
     conv_params = [
+        (16, (32, 32, 32)),
         (16, (64, 64, 64)),
         (16, (128, 128, 128)),
-        (16, (256, 256, 256)),
         ]
-    fc_params = [(256, 0.1), (128, 0.1)]
+    fc_params = [(256, 0.1), (128, 0.1), (64, 0.1)]
 
     ch_features_dims = len(data_config.input_dicts['ch_features'])
     ne_features_dims = len(data_config.input_dicts['ne_features'])

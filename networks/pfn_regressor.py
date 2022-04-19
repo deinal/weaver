@@ -74,8 +74,8 @@ class ParticleFlowNetworkRegressor(nn.Module):
 
 
 def get_model(data_config, **kwargs):
-    Phi_sizes = (100, 100, 128)
-    F_sizes = (100, 100, 100)
+    Phi_sizes = (32, 64, 128)
+    F_sizes = (256, 128, 64)
     ch_input_dims = len(data_config.input_dicts['ch_features'])
     ne_input_dims = len(data_config.input_dicts['ne_features'])
     sv_input_dims = len(data_config.input_dicts['sv_features'])
