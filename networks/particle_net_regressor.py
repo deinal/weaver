@@ -256,7 +256,7 @@ def get_model(data_config, **kwargs):
         (16, (64, 64, 64)),
         (16, (128, 128, 128)),
         ]
-    fc_params = [(256, 0.1), (128, 0.1), (64, 0.1)]
+    fc_params = [(256, 0.0), (128, 0.0), (64, 0.0)]
 
     ch_features_dims = len(data_config.input_dicts['ch_features'])
     ne_features_dims = len(data_config.input_dicts['ne_features'])

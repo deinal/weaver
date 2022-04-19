@@ -18,6 +18,15 @@ inputs:
          - ch_pt
          - ch_eta
          - ch_phi
+         - ch_dxy
+         - ch_dxy_significance
+         - ch_dz
+         - ch_num_hits
+         - ch_num_pixel_hits
+         - ch_lost_hits
+         - ch_norm_chi2
+         - ch_pv_ass
+         - ch_id
    ch_mask:
       length: 64
       vars:
@@ -28,6 +37,8 @@ inputs:
          - ne_pt
          - ne_eta
          - ne_phi
+         - ne_hcal_frac
+         - ne_id
    ne_mask:
       length: 64
       vars:
@@ -38,6 +49,10 @@ inputs:
          - sv_pt
          - sv_eta
          - sv_phi
+         - sv_mass
+         - sv_distance
+         - sv_significance
+         - sv_num_tracks
    sv_mask:
       length: 16
       vars:
@@ -48,6 +63,10 @@ inputs:
          - pt
          - eta
          - phi
+         - mass
+         - area
+         - rho
+         - num_pv
 
 
 labels:
