@@ -17,6 +17,12 @@ from utils.logger import _logger, _configLogger
 from utils.dataset import SimpleIterDataset
 from utils.data.fileio import get_s3_client
 
+def none_or_str(value):
+    if value == '':
+        return None
+    else:
+        return value
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--regression-mode', action='store_true', default=False,
                     help='run in regression mode if this flag is set; otherwise run in classification mode')
@@ -132,7 +138,7 @@ parser.add_argument('--profile', action='store_true', default=False,
                     help='run the profiler')
 parser.add_argument('--s3-model', type=str, default='', 
                     help='path to store best model on s3')
-parser.add_argument('--backend', type=str, choices=['gloo', 'nccl', 'mpi'], default=None,
+parser.add_argument('--backend', type=none_or_str, choices=['gloo', 'nccl', 'mpi', None], default=None,
                     help='backend for distributed training')
 
 
@@ -969,7 +975,8 @@ if __name__ == '__main__':
 
     stdout = sys.stdout
     if args.local_rank is not None:
-        args.log += '.%03d' % args.local_rank
+        if args.log:
+            args.log += '.%03d' % args.local_rank
         if args.local_rank != 0:
             stdout = None
     _configLogger('weaver', stdout=stdout, filename=args.log)
