@@ -166,7 +166,11 @@ def to_filelist(args, mode='train'):
 
     if args.local_rank is not None:
         if mode == 'train':
-            local_world_size = int(os.environ['LOCAL_WORLD_SIZE'])
+            try:
+                local_world_size = int(os.environ['LOCAL_WORLD_SIZE'])
+            except KeyError:
+                gpus = [args.local_rank]
+                local_world_size = len(gpus)
             new_file_dict = {}
             for name, files in file_dict.items():
                 new_files = files[args.local_rank::local_world_size]
