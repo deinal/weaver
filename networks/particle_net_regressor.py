@@ -251,12 +251,15 @@ class ParticleNetRegressor(nn.Module):
 
 
 def get_model(data_config, **kwargs):
-    conv_params = [
-        (16, (32, 32, 32)),
-        (16, (64, 64, 64)),
-        (16, (128, 128, 128)),
-        ]
-    fc_params = [(256, 0.0), (128, 0.0), (64, 0.0)]
+    k = kwargs.get('k', 16)
+    dropout = kwargs.get('dropout', 0.0)
+    num_conv_layers = kwargs.get('num_conv_layers', 3)
+    conv_dim = kwargs.get('conv_dim', 100)
+    num_fc_layers = kwargs.get('num_fc_layers', 3)
+    fc_dim = kwargs.get('fc_dim', 100)
+
+    conv_params = num_conv_layers * [(k, 3 * [conv_dim])]
+    fc_params = num_fc_layers * [(fc_dim, dropout)]
 
     ch_features_dims = len(data_config.input_dicts['ch_features'])
     ne_features_dims = len(data_config.input_dicts['ne_features'])

@@ -42,8 +42,8 @@ class ParticleFlowNetworkRegressor(nn.Module):
         sv_input_dims,
         jet_input_dims,
         num_classes,
-        Phi_sizes=(100, 100, 128),
-        F_sizes=(100, 100, 100),
+        Phi_sizes=[100, 100, 100],
+        F_sizes=[(100, 0.0), (100, 0.0), (100, 0.0)],
         use_bn=False,
         **kwargs
     ):
@@ -56,11 +56,13 @@ class ParticleFlowNetworkRegressor(nn.Module):
         # global functions
         f_layers = []
         for i in range(len(F_sizes)):
+            out_units, drop_rate = F_sizes[i]
             f_layers.append(nn.Sequential(
-                nn.Linear(jet_input_dims + 3 * Phi_sizes[-1] if i == 0 else F_sizes[i - 1], F_sizes[i]),
-                nn.ReLU())
+                nn.Linear(jet_input_dims + 3 * Phi_sizes[-1] if i == 0 else F_sizes[i - 1][0], out_units),
+                nn.ReLU(),
+                nn.Dropout(drop_rate))
             )
-        f_layers.append(nn.Linear(F_sizes[-1], num_classes))
+        f_layers.append(nn.Linear(F_sizes[-1][0], num_classes))
         self.fc = nn.Sequential(*f_layers)
 
     def forward(self, ch_features, ch_mask, ne_features, ne_mask, sv_features, sv_mask, jet_features):
@@ -74,8 +76,15 @@ class ParticleFlowNetworkRegressor(nn.Module):
 
 
 def get_model(data_config, **kwargs):
-    Phi_sizes = (32, 64, 128)
-    F_sizes = (256, 128, 64)
+    dropout = kwargs.get('dropout', 0.0)
+    num_conv_layers = kwargs.get('num_conv_layers', 3)
+    conv_dim = kwargs.get('conv_dim', 100)
+    num_fc_layers = kwargs.get('num_fc_layers', 3)
+    fc_dim = kwargs.get('fc_dim', 100)
+
+    Phi_sizes = num_conv_layers * [conv_dim]
+    F_sizes = num_fc_layers * [(fc_dim, dropout)]
+
     ch_input_dims = len(data_config.input_dicts['ch_features'])
     ne_input_dims = len(data_config.input_dicts['ne_features'])
     sv_input_dims = len(data_config.input_dicts['sv_features'])

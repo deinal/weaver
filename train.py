@@ -112,6 +112,18 @@ parser.add_argument('--start-lr', type=float, default=5e-3,
                     help='start learning rate')
 parser.add_argument('--batch-size', type=int, default=128,
                     help='batch size')
+parser.add_argument('--dropout', type=float, default=0.0,
+                    help='dropout')
+parser.add_argument('--k', type=int, default=16,
+                    help='number of k nearest neighbors')
+parser.add_argument('--conv-dim', type=int, default=100,
+                    help='conv layer dimensions')
+parser.add_argument('--num-conv-layers', type=int, default=3,
+                    help='number of conv layers')
+parser.add_argument('--num-fc-layers', type=int, default=3,
+                    help='number of linear layers')
+parser.add_argument('--fc-dim', type=int, default=100,
+                    help='linear layer dimensions')
 parser.add_argument('--use-amp', action='store_true', default=False,
                     help='use mixed precision training (fp16)')
 parser.add_argument('--gpus', type=str, default='0',
@@ -635,6 +647,18 @@ def model_setup(args, data_config):
     network_module = import_module(args.network_config.replace('.py', '').replace('/', '.'))
     network_options = {k: ast.literal_eval(v) for k, v in args.network_option}
     _logger.info('Network options: %s' % str(network_options))
+    if args.k:
+        network_options['k'] = args.k
+    if args.dropout:
+        network_options['dropout'] = args.dropout
+    if args.num_conv_layers:
+        network_options['num_conv_layers'] = args.num_conv_layers
+    if args.conv_dim:
+        network_options['conv_dim'] = args.conv_dim
+    if args.num_fc_layers:
+        network_options['num_fc_layers'] = args.num_fc_layers
+    if args.fc_dim:
+        network_options['fc_dim'] = args.fc_dim
     if args.export_onnx:
         network_options['for_inference'] = True
     if args.use_amp:
