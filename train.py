@@ -31,9 +31,8 @@ parser.add_argument('-c', '--data-config', type=str, default='data/ak15_points_p
 parser.add_argument('-i', '--data-train', nargs='*', default=[],
                     help='training files; supported syntax:'
                          ' (a) plain list, `--data-train /path/to/a/* /path/to/b/*`;'
-                         ' (b) (named) groups [Recommended], `--data-train a:/path/to/a/* b:/path/to/b/*`,'
-                         ' the file splitting (for each dataloader worker) will be performed per group,'
-                         ' and then mixed together, to ensure a uniform mixing from all groups for each worker.'
+                         ' (b) (named) groups [Recommended], `--data-train 0:/path/to/a/* 1:/path/to/b/*`,'
+                         ' the file splitting (for each dataloader worker) will be performed per group'
                     )
 parser.add_argument('-l', '--data-val', nargs='*', default=[],
                     help='validation files; when not set, will use training files and split by `--train-val-split`')
@@ -153,8 +152,12 @@ def to_filelist(args, mode='train'):
     # keyword-based: 'a:/path/to/a b:/path/to/b'
     file_dict = {}
     for f in flist:
-        if ':' in f.split('s3://')[-1]:
-            name, fp = f.split(':')
+        if ':' in f.split('s3')[0]:
+            if 's3' in f:
+                name, s3, path = f.split(':')
+                fp = ':'.join([s3, path])
+            else:
+                name, fp = f.split(':')
         else:
             name, fp = '_', f
         if fp.startswith('s3'):

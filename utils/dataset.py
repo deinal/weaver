@@ -135,7 +135,7 @@ def _load_next(data_config, filelist, load_range, options):
     indices = _preprocess(table, data_config, options)
     return table, indices
 
-
+import sys
 class _SimpleIter(object):
     r"""_SimpleIter
 
@@ -164,12 +164,9 @@ class _SimpleIter(object):
             self._seed = worker_info.seed & 0xFFFFFFFF
             np.random.seed(self._seed)
             # split workload by files
-            new_file_dict = {}
-            for name, files in file_dict.items():
-                new_files = files[worker_info.id::worker_info.num_workers]
-                assert(len(new_files) > 0)
-                new_file_dict[name] = new_files
-            file_dict = new_file_dict
+            if (not '_' in file_dict) and (not '' in file_dict):
+                name = str(worker_info.id)
+                file_dict = {name: file_dict[name]}
         self.worker_file_dict = file_dict
         self.worker_filelist = sum(file_dict.values(), [])
         self.worker_info = worker_info
