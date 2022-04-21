@@ -23,22 +23,26 @@ def none_or_str(value):
     else:
         return value
 
+def list_str(values):
+    lst = values.split(',')
+    return [val.strip() for val in lst]
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--regression-mode', action='store_true', default=False,
                     help='run in regression mode if this flag is set; otherwise run in classification mode')
 parser.add_argument('-c', '--data-config', type=str, default='data/ak15_points_pf_sv_v0.yaml',
                     help='data config YAML file')
-parser.add_argument('-i', '--data-train', nargs='*', default=[],
+parser.add_argument('-i', '--data-train', type=list_str, default=[],
                     help='training files; supported syntax:'
-                         ' (a) plain list, `--data-train /path/to/a/* /path/to/b/*`;'
-                         ' (b) (named) groups [Recommended], `--data-train 0:/path/to/a/* 1:/path/to/b/*`,'
+                         ' (a) plain list, `--data-train /path/to/a/*,/path/to/b/*`;'
+                         ' (b) (named) groups [Recommended], `--data-train 0:/path/to/a/*,1:/path/to/b/*`,'
                          ' the file splitting (for each dataloader worker) will be performed per group'
                     )
-parser.add_argument('-l', '--data-val', nargs='*', default=[],
+parser.add_argument('-l', '--data-val', type=list_str, default=[],
                     help='validation files; when not set, will use training files and split by `--train-val-split`')
-parser.add_argument('-t', '--data-test', nargs='*', default=[],
+parser.add_argument('-t', '--data-test', type=list_str, default=[],
                     help='testing files; supported syntax:'
-                         ' (a) plain list, `--data-test /path/to/a/* /path/to/b/*`;'
+                         ' (a) plain list, `--data-test /path/to/a/*,/path/to/b/*`;'
                          ' (b) keyword-based, `--data-test a:/path/to/a/* b:/path/to/b/*`, will produce output_a, output_b;'
                          ' (c) split output per N input files, `--data-test a%10:/path/to/a/*`, will split per 10 input files')
 parser.add_argument('--data-fraction', type=float, default=1,
