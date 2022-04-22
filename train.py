@@ -27,6 +27,10 @@ def list_str(values):
     lst = values.split(',')
     return [val.strip() for val in lst]
 
+def nested_list(values):
+    lst = values.split(',')
+    return [val.strip().split(':') for val in lst]
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--regression-mode', action='store_true', default=False,
                     help='run in regression mode if this flag is set; otherwise run in classification mode')
@@ -72,8 +76,8 @@ parser.add_argument('--tensorboard-custom-fn', type=str, default=None,
                          'to display custom information per mini-batch or per epoch, during the training, validation or test.')
 parser.add_argument('-n', '--network-config', type=str, default='networks/particle_net_pfcand_sv.py',
                     help='network architecture configuration file; the path must be relative to the current dir')
-parser.add_argument('-o', '--network-option', nargs=2, action='append', default=[],
-                    help='options to pass to the model class constructor, e.g., `--network-option use_counts False`')
+parser.add_argument('-o', '--network-option', type=nested_list, default=[],
+                    help='options to pass to the model class constructor, e.g., `--network-option=dropout:0.1,fc_dim:128`')
 parser.add_argument('-m', '--model-prefix', type=str, default='models/{auto}/network',
                     help='path to save or load the model; for training, this will be used as a prefix, so model snapshots '
                          'will saved to `{model_prefix}_epoch-%d_state.pt` after each epoch, and the one with the best '
@@ -112,18 +116,6 @@ parser.add_argument('--start-lr', type=float, default=5e-3,
                     help='start learning rate')
 parser.add_argument('--batch-size', type=int, default=128,
                     help='batch size')
-parser.add_argument('--dropout', type=float, default=0.0,
-                    help='dropout')
-parser.add_argument('--k', type=int, default=16,
-                    help='number of k nearest neighbors')
-parser.add_argument('--conv-dim', type=int, default=100,
-                    help='conv layer dimensions')
-parser.add_argument('--num-conv-layers', type=int, default=3,
-                    help='number of conv layers')
-parser.add_argument('--num-fc-layers', type=int, default=3,
-                    help='number of linear layers')
-parser.add_argument('--fc-dim', type=int, default=100,
-                    help='linear layer dimensions')
 parser.add_argument('--use-amp', action='store_true', default=False,
                     help='use mixed precision training (fp16)')
 parser.add_argument('--gpus', type=str, default='0',
@@ -647,18 +639,7 @@ def model_setup(args, data_config):
     network_module = import_module(args.network_config.replace('.py', '').replace('/', '.'))
     network_options = {k: ast.literal_eval(v) for k, v in args.network_option}
     _logger.info('Network options: %s' % str(network_options))
-    if args.k:
-        network_options['k'] = args.k
-    if args.dropout:
-        network_options['dropout'] = args.dropout
-    if args.num_conv_layers:
-        network_options['num_conv_layers'] = args.num_conv_layers
-    if args.conv_dim:
-        network_options['conv_dim'] = args.conv_dim
-    if args.num_fc_layers:
-        network_options['num_fc_layers'] = args.num_fc_layers
-    if args.fc_dim:
-        network_options['fc_dim'] = args.fc_dim
+    sys.exit()
     if args.export_onnx:
         network_options['for_inference'] = True
     if args.use_amp:
