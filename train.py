@@ -39,15 +39,16 @@ parser.add_argument('-c', '--data-config', type=str, default='data/ak15_points_p
 parser.add_argument('-i', '--data-train', type=list_str, default=[],
                     help='training files; supported syntax:'
                          ' (a) plain list, `--data-train /path/to/a/*,/path/to/b/*`;'
-                         ' (b) (named) groups [Recommended], `--data-train 0:/path/to/a/*,1:/path/to/b/*`,'
-                         ' the file splitting (for each dataloader worker) will be performed per group'
+                         ' (b) (named) groups [Recommended], `--data-train a:/path/to/a/*,b:/path/to/b/*`,'
+                         ' the file splitting (for each dataloader worker) will be performed per group,'
+                         ' and then mixed together, to ensure a uniform mixing from all groups for each worker.'
                     )
 parser.add_argument('-l', '--data-val', type=list_str, default=[],
                     help='validation files; when not set, will use training files and split by `--train-val-split`')
 parser.add_argument('-t', '--data-test', type=list_str, default=[],
                     help='testing files; supported syntax:'
                          ' (a) plain list, `--data-test /path/to/a/*,/path/to/b/*`;'
-                         ' (b) keyword-based, `--data-test a:/path/to/a/* b:/path/to/b/*`, will produce output_a, output_b;'
+                         ' (b) keyword-based, `--data-test a:/path/to/a/*,b:/path/to/b/*`, will produce output_a, output_b;'
                          ' (c) split output per N input files, `--data-test a%10:/path/to/a/*`, will split per 10 input files')
 parser.add_argument('--data-fraction', type=float, default=1,
                     help='fraction of events to load from each file; for training, the events are randomly selected for each epoch')
@@ -159,6 +160,7 @@ def to_filelist(args, mode='train'):
 
     # keyword-based: 'a:/path/to/a b:/path/to/b'
     file_dict = {}
+    copy_s3 = False
     for f in flist:
         if ':' in f.split('s3')[0]:
             if 's3' in f:
@@ -169,7 +171,12 @@ def to_filelist(args, mode='train'):
         else:
             name, fp = '_', f
         if fp.startswith('s3'):
-            files = [fp]
+            if args.copy_inputs:
+                copy_s3 = True
+                s3 = get_s3_client()
+                files = s3.glob(fp)
+            else:
+                files = [fp]
         else:
             files = glob.glob(fp)
         if name in file_dict:
@@ -207,7 +214,10 @@ def to_filelist(args, mode='train'):
                 dest = os.path.join(tmpdir, src.lstrip('/'))
                 if not os.path.exists(os.path.dirname(dest)):
                     os.makedirs(os.path.dirname(dest), exist_ok=True)
-                shutil.copy2(src, dest)
+                if copy_s3:
+                    s3.download(src, dest)
+                else:
+                    shutil.copy2(src, dest)
                 _logger.info('Copied file %s to %s' % (src, dest))
                 new_file_dict[name].append(dest)
             if len(files) != len(new_file_dict[name]):
@@ -290,16 +300,26 @@ def test_load(args):
     # split --data-test: 'a%10:/path/to/a/*'
     file_dict = {}
     split_dict = {}
+    copy_s3 = False
     for f in args.data_test:
-        if ':' in f.split('s3://')[-1]:
-            name, fp = f.split(':')
+        if ':' in f.split('s3://')[0]:
+            if 's3' in f:
+                name, s3, path = f.split(':')
+                fp = ':'.join([s3, path])
+            else:
+                name, fp = f.split(':')
             if '%' in name:
                 name, split = name.split('%')
                 split_dict[name] = int(split)
         else:
             name, fp = '', f
         if fp.startswith('s3'):
-            files = [fp]
+            if args.copy_inputs:
+                copy_s3 = True
+                s3 = get_s3_client()
+                files = s3.glob(fp)
+            else:
+                files = [fp]
         else:
             files = glob.glob(fp)
         if name in file_dict:
@@ -316,6 +336,25 @@ def test_load(args):
         files = file_dict.pop(name)
         for i in range((len(files) + split - 1) // split):
             file_dict[f'{name}_{i}'] = files[i * split:(i + 1) * split]
+    
+    if copy_s3:
+        import tempfile
+        tmpdir = tempfile.mkdtemp()
+        if os.path.exists(tmpdir):
+            shutil.rmtree(tmpdir)
+        new_file_dict = {name: [] for name in file_dict}
+        for name, files in file_dict.items():
+            for src in files:
+                dest = os.path.join(tmpdir, src.lstrip('/'))
+                if not os.path.exists(os.path.dirname(dest)):
+                    os.makedirs(os.path.dirname(dest), exist_ok=True)
+                s3.download(src, dest)
+                _logger.info('Copied file %s to %s' % (src, dest))
+                new_file_dict[name].append(dest)
+            if len(files) != len(new_file_dict[name]):
+                _logger.error('Only %d/%d files copied for %s file group %s',
+                              len(new_file_dict[name]), len(files), mode, name)
+        file_dict = new_file_dict
 
     def get_test_loader(name):
         filelist = file_dict[name]
@@ -639,7 +678,6 @@ def model_setup(args, data_config):
     network_module = import_module(args.network_config.replace('.py', '').replace('/', '.'))
     network_options = {k: ast.literal_eval(v) for k, v in args.network_option}
     _logger.info('Network options: %s' % str(network_options))
-    sys.exit()
     if args.export_onnx:
         network_options['for_inference'] = True
     if args.use_amp:
