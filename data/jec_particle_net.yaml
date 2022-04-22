@@ -4,6 +4,19 @@ new_variables:
    ch_mask: ak.ones_like(ch_pt)
    ne_mask: ak.ones_like(ne_pt)
    sv_mask: ak.ones_like(sv_pt)
+   pt_log: np.log(pt)
+   ch_pt_log: np.log(ch_pt)
+   ne_pt_log: np.log(ne_pt)
+   sv_pt_log: np.log(sv_pt)
+   ch_rel_pt: ch_pt / pt
+   ne_rel_pt: ne_pt / pt
+   sv_rel_pt: sv_pt / pt
+   ch_deta: (ch_eta - eta) * np.sign(eta)
+   ne_deta: (ne_eta - eta) * np.sign(eta)
+   sv_deta: (sv_eta - eta) * np.sign(eta)
+   ch_dphi: (ch_phi - phi + np.pi) % (2 * np.pi) - np.pi
+   ne_dphi: (ne_phi - phi + np.pi) % (2 * np.pi) - np.pi
+   sv_dphi: (sv_phi - phi + np.pi) % (2 * np.pi) - np.pi
 
 preprocess:
    ### method: [manual, auto] - whether to use manually specified parameters for variable standardization
@@ -15,23 +28,22 @@ inputs:
    ch_points:
       length: 64
       vars: 
-         - ch_eta
-         - ch_phi
+         - ch_deta
+         - ch_dphi
    ch_features:
       length: 64
       vars:
-         - ch_pt
-         - ch_eta
-         - ch_phi
+         - ch_pt_log
          - ch_dxy
          - ch_dxy_significance
          - ch_dz
          - ch_num_hits
-         - ch_num_pixel_hits
-         - ch_lost_hits
          - ch_norm_chi2
          - ch_pv_ass
          - ch_id
+         - ch_rel_pt
+         - ch_deta
+         - ch_dphi
    ch_mask:
       length: 64
       vars:
@@ -39,16 +51,17 @@ inputs:
    ne_points:
       length: 64
       vars: 
-         - ne_eta
-         - ne_phi
+         - ne_deta
+         - ne_dphi
    ne_features:
       length: 64
       vars:
-         - ne_pt
-         - ne_eta
-         - ne_phi
+         - ne_pt_log
          - ne_hcal_frac
          - ne_id
+         - ne_rel_pt
+         - ne_deta
+         - ne_dphi
    ne_mask:
       length: 64
       vars:
@@ -56,18 +69,19 @@ inputs:
    sv_points:
       length: 16
       vars: 
-         - sv_eta
-         - sv_phi
+         - sv_deta
+         - sv_dphi
    sv_features:
       length: 16
       vars:
-         - sv_pt
-         - sv_eta
-         - sv_phi
+         - sv_pt_log
          - sv_mass
          - sv_distance
          - sv_significance
          - sv_num_tracks
+         - sv_rel_pt
+         - sv_deta
+         - sv_dphi
    sv_mask:
       length: 16
       vars:
@@ -75,7 +89,7 @@ inputs:
    jet_features:
       length:
       vars:
-         - pt
+         - pt_log
          - eta
          - phi
          - mass
