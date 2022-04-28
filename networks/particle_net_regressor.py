@@ -291,5 +291,14 @@ def get_model(data_config, **kwargs):
     return model, model_info
 
 
+class CustomL1Loss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(CustomL1Loss, self).__init__()
+
+    def forward(self, y_pred, y_true):
+        mask = torch.logical_and(y_true > -1, y_true < 1)
+        return torch.mean(torch.abs(y_pred - y_true) * mask)
+
+
 def get_loss(data_config, **kwargs):
-    return torch.nn.SmoothL1Loss(beta=kwargs.get('loss_beta', 10))
+    return CustomL1Loss()
