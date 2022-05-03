@@ -426,6 +426,8 @@ def evaluate_regression(model, test_loader, dev, epoch, for_training=True, loss_
 
     time_diff = time.time() - start_time
     _logger.info('Processed %d entries in total (avg. speed %.1f entries/s)' % (count, count / time_diff))
+    _logger.info('Loss=%.5f, AvgLoss=%.5f, MSE=%.5f, AvgMSE=%.5f, MAE=%.5f, AvgMAE=%.5f' %
+        (loss, total_loss / count, sqr_err / num_examples, sum_sqr_err / count, abs_err / num_examples, sum_abs_err / count))
 
     if tb_helper:
         tb_mode = 'eval' if for_training else 'test'
