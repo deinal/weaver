@@ -3,7 +3,6 @@ import awkward as ak
 import tqdm
 import time
 import torch
-import json
 import datetime
 
 from collections import defaultdict, Counter
@@ -352,9 +351,16 @@ def train_regression(model, loss_func, opt, scheduler, train_loader, dev, epoch,
         scheduler.step()
 
 
-def update_json(data, filename):
+def update_logs(data, filename):
     with open(filename, 'a') as f:
-        f.write(str(data).replace('\'', '\"') + '\n')
+        f.write(f'epoch {data["epoch"]}\n')
+        f.write(f'{data["timestamp"]} Loss={data["Loss"]}\n')
+        f.write(f'{data["timestamp"]} AvgLoss={data["AvgLoss"]}\n')
+        f.write(f'{data["timestamp"]} MSE={data["MSE"]}\n')
+        f.write(f'{data["timestamp"]} AvgMSE={data["AvgMSE"]}\n')
+        f.write(f'{data["timestamp"]} MAE={data["MAE"]}\n')
+        f.write(f'{data["timestamp"]} AvgMAE={data["AvgMAE"]}\n')
+        f.write('\n')
 
 
 def evaluate_regression(model, test_loader, dev, epoch, for_training=True, loss_func=None, steps_per_epoch=None,
@@ -426,7 +432,7 @@ def evaluate_regression(model, test_loader, dev, epoch, for_training=True, loss_
         "MAE": abs_err / num_examples, "AvgMAE":  sum_abs_err / count,
         "timestamp": timestamp
     }
-    update_json(data, logfile)
+    update_logs(data, logfile)
 
     if tb_helper:
         tb_mode = 'eval' if for_training else 'test'
