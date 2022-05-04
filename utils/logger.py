@@ -4,7 +4,7 @@ import os
 from functools import lru_cache
 
 
-def _configLogger(name, stdout=sys.stdout, filename=None, loglevel=logging.INFO):
+def _configLogger(name, stdout=sys.stdout, filename=None, loglevel=logging.ERROR):
     # define a Handler which writes INFO messages or higher to the sys.stdout
     logger = logging.getLogger(name)
     logger.setLevel(loglevel)

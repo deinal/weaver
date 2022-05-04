@@ -3,6 +3,8 @@ import awkward as ak
 import tqdm
 import time
 import torch
+import json
+from datetime import datetime
 
 from collections import defaultdict, Counter
 from .metrics import evaluate_metrics
@@ -284,61 +286,50 @@ def train_regression(model, loss_func, opt, scheduler, train_loader, dev, epoch,
     sum_sqr_err = 0
     count = 0
     start_time = time.time()
-    with tqdm.tqdm(train_loader) as tq:
-        for X, y, _ in tq:
-            inputs = [X[k].to(dev) for k in data_config.input_names]
-            label = y[data_config.label_names[0]].float()
-            num_examples = label.shape[0]
-            label = label.to(dev)
-            opt.zero_grad()
-            with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
-                model_output = model(*inputs)
-                preds = model_output.squeeze()
-                loss = loss_func(preds, label)
-            if grad_scaler is None:
-                loss.backward()
-                opt.step()
-            else:
-                grad_scaler.scale(loss).backward()
-                grad_scaler.step(opt)
-                grad_scaler.update()
+    for X, y, _ in train_loader:
+        inputs = [X[k].to(dev) for k in data_config.input_names]
+        label = y[data_config.label_names[0]].float()
+        num_examples = label.shape[0]
+        label = label.to(dev)
+        opt.zero_grad()
+        with torch.cuda.amp.autocast(enabled=grad_scaler is not None):
+            model_output = model(*inputs)
+            preds = model_output.squeeze()
+            loss = loss_func(preds, label)
+        if grad_scaler is None:
+            loss.backward()
+            opt.step()
+        else:
+            grad_scaler.scale(loss).backward()
+            grad_scaler.step(opt)
+            grad_scaler.update()
 
-            if scheduler and getattr(scheduler, '_update_per_step', False):
-                scheduler.step()
+        if scheduler and getattr(scheduler, '_update_per_step', False):
+            scheduler.step()
 
-            loss = loss.item()
+        loss = loss.item()
 
-            num_batches += 1
-            count += num_examples
-            total_loss += loss
-            e = preds - label
-            abs_err = e.abs().sum().item()
-            sum_abs_err += abs_err
-            sqr_err = e.square().sum().item()
-            sum_sqr_err += sqr_err
+        num_batches += 1
+        count += num_examples
+        total_loss += loss
+        e = preds - label
+        abs_err = e.abs().sum().item()
+        sum_abs_err += abs_err
+        sqr_err = e.square().sum().item()
+        sum_sqr_err += sqr_err
 
-            tq.set_postfix({
-                'lr': '%.2e' % scheduler.get_last_lr()[0] if scheduler else opt.defaults['lr'],
-                'Loss': '%.5f' % loss,
-                'AvgLoss': '%.5f' % (total_loss / num_batches),
-                'MSE': '%.5f' % (sqr_err / num_examples),
-                'AvgMSE': '%.5f' % (sum_sqr_err / count),
-                'MAE': '%.5f' % (abs_err / num_examples),
-                'AvgMAE': '%.5f' % (sum_abs_err / count),
-            })
+        if tb_helper:
+            tb_helper.write_scalars([
+                ("Loss/train", loss, tb_helper.batch_train_count + num_batches),
+                ("MSE/train", sqr_err / num_examples, tb_helper.batch_train_count + num_batches),
+                ("MAE/train", abs_err / num_examples, tb_helper.batch_train_count + num_batches),
+                ])
+            if tb_helper.custom_fn:
+                with torch.no_grad():
+                    tb_helper.custom_fn(model_output=model_output, model=model, epoch=epoch, i_batch=num_batches, mode='train')
 
-            if tb_helper:
-                tb_helper.write_scalars([
-                    ("Loss/train", loss, tb_helper.batch_train_count + num_batches),
-                    ("MSE/train", sqr_err / num_examples, tb_helper.batch_train_count + num_batches),
-                    ("MAE/train", abs_err / num_examples, tb_helper.batch_train_count + num_batches),
-                    ])
-                if tb_helper.custom_fn:
-                    with torch.no_grad():
-                        tb_helper.custom_fn(model_output=model_output, model=model, epoch=epoch, i_batch=num_batches, mode='train')
-
-            if steps_per_epoch is not None and num_batches >= steps_per_epoch:
-                break
+        if steps_per_epoch is not None and num_batches >= steps_per_epoch:
+            break
 
     time_diff = time.time() - start_time
     _logger.info('Processed %d entries in total (avg. speed %.1f entries/s)' % (count, count / time_diff))
@@ -361,10 +352,14 @@ def train_regression(model, loss_func, opt, scheduler, train_loader, dev, epoch,
         scheduler.step()
 
 
+def update_json(data, filename):
+    with open(filename, 'a') as f:
+        f.write(str(data) + '\n')
+
+
 def evaluate_regression(model, test_loader, dev, epoch, for_training=True, loss_func=None, steps_per_epoch=None,
-                        eval_metrics=['mean_squared_error', 'mean_absolute_error', 'median_absolute_error',
-                                      'mean_gamma_deviance'],
-                        tb_helper=None):
+                        eval_metrics=['mean_squared_error', 'mean_absolute_error', 'median_absolute_error'],
+                        tb_helper=None, logfile=''):
     model.eval()
 
     data_config = test_loader.dataset.config
@@ -379,55 +374,53 @@ def evaluate_regression(model, test_loader, dev, epoch, for_training=True, loss_
     observers = defaultdict(list)
     start_time = time.time()
     with torch.no_grad():
-        with tqdm.tqdm(test_loader) as tq:
-            for X, y, Z in tq:
-                inputs = [X[k].to(dev) for k in data_config.input_names]
-                label = y[data_config.label_names[0]].float()
-                num_examples = label.shape[0]
-                label = label.to(dev)
-                model_output = model(*inputs)
-                preds = model_output.squeeze().float()
+        for X, y, Z in test_loader:
+            inputs = [X[k].to(dev) for k in data_config.input_names]
+            label = y[data_config.label_names[0]].float()
+            num_examples = label.shape[0]
+            label = label.to(dev)
+            model_output = model(*inputs)
+            preds = model_output.squeeze().float()
 
-                scores.append(preds.detach().cpu().numpy())
-                for k, v in y.items():
-                    labels[k].append(v.cpu().numpy())
-                if not for_training:
-                    for k, v in Z.items():
-                        observers[k].append(v.cpu().numpy())
+            scores.append(preds.detach().cpu().numpy())
+            for k, v in y.items():
+                labels[k].append(v.cpu().numpy())
+            if not for_training:
+                for k, v in Z.items():
+                    observers[k].append(v.cpu().numpy())
 
-                loss = 0 if loss_func is None else loss_func(preds, label).item()
+            loss = 0 if loss_func is None else loss_func(preds, label).item()
 
-                num_batches += 1
-                count += num_examples
-                total_loss += loss * num_examples
-                e = preds - label
-                abs_err = e.abs().sum().item()
-                sum_abs_err += abs_err
-                sqr_err = e.square().sum().item()
-                sum_sqr_err += sqr_err
+            num_batches += 1
+            count += num_examples
+            total_loss += loss * num_examples
+            e = preds - label
+            abs_err = e.abs().sum().item()
+            sum_abs_err += abs_err
+            sqr_err = e.square().sum().item()
+            sum_sqr_err += sqr_err
 
-                tq.set_postfix({
-                    'Loss': '%.5f' % loss,
-                    'AvgLoss': '%.5f' % (total_loss / count),
-                    'MSE': '%.5f' % (sqr_err / num_examples),
-                    'AvgMSE': '%.5f' % (sum_sqr_err / count),
-                    'MAE': '%.5f' % (abs_err / num_examples),
-                    'AvgMAE': '%.5f' % (sum_abs_err / count),
-                })
+            if tb_helper:
+                if tb_helper.custom_fn:
+                    with torch.no_grad():
+                        tb_helper.custom_fn(model_output=model_output, model=model, epoch=epoch, i_batch=num_batches,
+                                            mode='eval' if for_training else 'test')
 
-                if tb_helper:
-                    if tb_helper.custom_fn:
-                        with torch.no_grad():
-                            tb_helper.custom_fn(model_output=model_output, model=model, epoch=epoch, i_batch=num_batches,
-                                                mode='eval' if for_training else 'test')
-
-                if steps_per_epoch is not None and num_batches >= steps_per_epoch:
-                    break
+            if steps_per_epoch is not None and num_batches >= steps_per_epoch:
+                break
 
     time_diff = time.time() - start_time
     _logger.info('Processed %d entries in total (avg. speed %.1f entries/s)' % (count, count / time_diff))
-    _logger.info('Loss=%.5f, AvgLoss=%.5f, MSE=%.5f, AvgMSE=%.5f, MAE=%.5f, AvgMAE=%.5f' %
+    print('epoch %d:' % epoch)
+    print('Loss=%.5f\nAvgLoss=%.5f\nMSE=%.5f\nAvgMSE=%.5f\nMAE=%.5f\nAvgMAE=%.5f\n' %
         (loss, total_loss / count, sqr_err / num_examples, sum_sqr_err / count, abs_err / num_examples, sum_abs_err / count))
+    data = {
+        "Loss": loss, "AvgLoss": total_loss / count,
+        "MSE": sqr_err / num_examples, "AvgMSE": sum_sqr_err / count, 
+        "MAE": abs_err / num_examples, "AvgMAE":  sum_abs_err / count,
+        "timestamp": str(datetime.now())
+    }
+    update_json(data, logfile)
 
     if tb_helper:
         tb_mode = 'eval' if for_training else 'test'

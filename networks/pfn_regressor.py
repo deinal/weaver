@@ -105,7 +105,7 @@ def get_model(data_config, **kwargs):
     model_info['dynamic_axes']['jet_features'] = {0: 'N', 1: 'n_jet'}
     model_info['dynamic_axes']['output'] = {0: 'N'}
 
-    print(model, model_info)
+    # print(model, model_info)
     return model, model_info
 
 
