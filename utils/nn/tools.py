@@ -421,7 +421,7 @@ def evaluate_regression(model, test_loader, dev, epoch, for_training=True, loss_
     print(timestamp, f'AvgMAE={sum_abs_err / count}')
     print()
     data = {
-        "Loss": loss, "AvgLoss": total_loss / count,
+        "epoch": epoch, "Loss": loss, "AvgLoss": total_loss / count,
         "MSE": sqr_err / num_examples, "AvgMSE": sum_sqr_err / count, 
         "MAE": abs_err / num_examples, "AvgMAE":  sum_abs_err / count,
         "timestamp": timestamp
