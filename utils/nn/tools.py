@@ -4,7 +4,7 @@ import tqdm
 import time
 import torch
 import json
-from datetime import datetime
+import datetime
 
 from collections import defaultdict, Counter
 from .metrics import evaluate_metrics
@@ -411,14 +411,20 @@ def evaluate_regression(model, test_loader, dev, epoch, for_training=True, loss_
 
     time_diff = time.time() - start_time
     _logger.info('Processed %d entries in total (avg. speed %.1f entries/s)' % (count, count / time_diff))
+    timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
     print('epoch %d:' % epoch)
-    print('Loss=%.5f\nAvgLoss=%.5f\nMSE=%.5f\nAvgMSE=%.5f\nMAE=%.5f\nAvgMAE=%.5f\n' %
-        (loss, total_loss / count, sqr_err / num_examples, sum_sqr_err / count, abs_err / num_examples, sum_abs_err / count))
+    print(timestamp, f'Loss={loss}')
+    print(timestamp, f'AvgLoss={total_loss / count}')
+    print(timestamp, f'MSE={sqr_err / num_examples}')
+    print(timestamp, f'AvgMSE={sum_sqr_err / count}')
+    print(timestamp, f'MAE={abs_err / num_examples}')
+    print(timestamp, f'AvgMAE={sum_abs_err / count}')
+    print()
     data = {
         "Loss": loss, "AvgLoss": total_loss / count,
         "MSE": sqr_err / num_examples, "AvgMSE": sum_sqr_err / count, 
         "MAE": abs_err / num_examples, "AvgMAE":  sum_abs_err / count,
-        "timestamp": str(datetime.now())
+        "timestamp": timestamp
     }
     update_json(data, logfile)
 
