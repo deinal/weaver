@@ -354,7 +354,7 @@ def train_regression(model, loss_func, opt, scheduler, train_loader, dev, epoch,
 
 def update_json(data, filename):
     with open(filename, 'a') as f:
-        f.write(str(data) + '\n')
+        f.write(str(data).replace('\'', '\"') + '\n')
 
 
 def evaluate_regression(model, test_loader, dev, epoch, for_training=True, loss_func=None, steps_per_epoch=None,
