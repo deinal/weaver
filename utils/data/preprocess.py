@@ -2,6 +2,7 @@ import time
 import glob
 import copy
 import numpy as np
+import awkward as ak
 
 from ..logger import _logger
 from .tools import _get_variable_names, _eval_expr
@@ -11,10 +12,11 @@ from .fileio import _read_files
 def _apply_selection(table, selection):
     if selection is None:
         return
-    selected = _eval_expr(selection, table).astype('bool')
+    selected = _eval_expr(selection, table)
+    selected = ak.values_astype(selected, 'bool')
     for k in table.keys():
         table[k] = table[k][selected]
-    return selected.sum()
+    return ak.sum(selected)
 
 
 def _build_new_variables(table, funcs):

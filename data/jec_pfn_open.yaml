@@ -1,0 +1,57 @@
+selection:
+   (genJetPt > 20) & (np.abs(genJetEta) < 2.5)
+
+new_variables:
+   pf_mask: ak.ones_like(PF_pT)
+   jetLogPt: np.log(jetPt)
+   PF_logPt: np.log(PF_pT)
+   PF_logRelPt: np.log(PF_pT / jetPt)
+
+preprocess:
+   ### method: [manual, auto] - whether to use manually specified parameters for variable standardization
+   method: manual
+   ### data_fraction: fraction of events to use when calculating the mean/scale for the standardization
+   data_fraction:
+
+inputs:
+   pf_features:
+      length: 100
+      vars:
+         - PF_logPt
+         - PF_logRelPt
+         - PF_dEta
+         - PF_dPhi
+         - PF_dTheta
+         - PF_dR
+   pf_mask:
+      length: 100
+      vars:
+         - pf_mask
+   jet_features:
+      length:
+      vars:
+         - jetLogPt
+         - jetEta
+         - jetPhi
+         - jetMass
+         - jetArea
+         - QG_ptD
+         - QG_axis2
+         - QG_mult
+
+labels:
+   ### type can be `simple`, `custom`
+   ### [option 1] use `simple` for binary/multi-class classification, then `value` is a list of 0-1 labels
+   ### [option 2] otherwise use `custom` to define the label, then `value` is a map
+   type: custom
+   value: 
+      target: np.log(genJetPt / jetPt)
+
+observers:
+   - jetPt
+   - genJetPt
+   - genJetEta
+   - partonFlav
+   - hadronFlav
+
+weights:
