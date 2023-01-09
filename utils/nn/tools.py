@@ -364,13 +364,13 @@ def train_regression(model, loss_func, opt, scheduler, train_loader, dev, epoch,
 
 def update_logs(data, filename):
     with open(filename, 'a') as f:
-        f.write(f'epoch {data["epoch"]}\n')
-        f.write(f'{data["timestamp"]} Loss={data["Loss"]}\n')
-        f.write(f'{data["timestamp"]} AvgLoss={data["AvgLoss"]}\n')
-        f.write(f'{data["timestamp"]} MSE={data["MSE"]}\n')
-        f.write(f'{data["timestamp"]} AvgMSE={data["AvgMSE"]}\n')
-        f.write(f'{data["timestamp"]} MAE={data["MAE"]}\n')
-        f.write(f'{data["timestamp"]} AvgMAE={data["AvgMAE"]}\n')
+        f.write(f'epoch {data["epoch"]}:\n')
+        f.write(f'Loss={data["Loss"]}\n')
+        f.write(f'AvgLoss={data["AvgLoss"]}\n')
+        f.write(f'MSE={data["MSE"]}\n')
+        f.write(f'AvgMSE={data["AvgMSE"]}\n')
+        f.write(f'MAE={data["MAE"]}\n')
+        f.write(f'AvgMAE={data["AvgMAE"]}\n')
         f.write('\n')
 
 
