@@ -14,6 +14,11 @@ preprocess:
    data_fraction:
 
 inputs:
+   pf_points:
+      length: 100
+      vars: 
+         - PF_dEta
+         - PF_dPhi
    pf_features:
       length: 100
       vars:
