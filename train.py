@@ -815,7 +815,11 @@ def main(args):
             torch.cuda.set_device(local_rank)
             gpus = [local_rank]
             dev = torch.device(local_rank)
-            torch.distributed.init_process_group(backend=args.backend, world_size=os.environ['WORLD_SIZE'])
+            torch.distributed.init_process_group(
+                backend=args.backend, 
+                rank=int(os.environ['RANK']), 
+                world_size=int(os.environ['WORLD_SIZE'])
+            )
             _logger.info(f'Using distributed PyTorch with {args.backend} backend')
         else:
             gpus = [int(i) for i in args.gpus.split(',')]
