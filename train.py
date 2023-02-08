@@ -192,14 +192,11 @@ def to_filelist(args, mode='train'):
 
     if args.local_rank is not None:
         if mode == 'train':
-            try:
-                world_size = int(os.environ['WORLD_SIZE'])
-            except KeyError:
-                gpus = [args.local_rank]
-                world_size = len(gpus)
+            world_size = int(os.environ['WORLD_SIZE'])
+            rank = int(os.environ['RANK'])
             new_file_dict = {}
             for name, files in file_dict.items():
-                new_files = files[args.local_rank::world_size]
+                new_files = files[rank::world_size]
                 assert(len(new_files) > 0)
                 np.random.shuffle(new_files)
                 new_file_dict[name] = new_files
@@ -270,7 +267,7 @@ def train_load(args):
                                    fetch_step=args.fetch_step,
                                    infinity_mode=args.steps_per_epoch is not None,
                                    in_memory=args.in_memory,
-                                   name='train' + ('' if args.local_rank is None else '_rank%d' % args.local_rank))
+                                   name='train' + ('' if args.rank is None else '_rank%d' % args.rank))
     val_data = SimpleIterDataset(val_file_dict, args.data_config, for_training=True,
                                  load_range_and_fraction=(val_range, args.data_fraction),
                                  file_fraction=args.file_fraction,
@@ -278,7 +275,7 @@ def train_load(args):
                                  fetch_step=args.fetch_step,
                                  infinity_mode=args.steps_per_epoch_val is not None,
                                  in_memory=args.in_memory,
-                                 name='val' + ('' if args.local_rank is None else '_rank%d' % args.local_rank))
+                                 name='val' + ('' if args.rank is None else '_rank%d' % args.rank))
     train_loader = DataLoader(train_data, batch_size=args.batch_size, drop_last=True, pin_memory=True,
                               num_workers=min(args.num_workers, int(len(train_files) * args.file_fraction)),
                               persistent_workers=args.num_workers > 0 and args.steps_per_epoch is not None)
@@ -789,6 +786,14 @@ def save_awk(args, output_path, scores, labels, observers):
 
 
 def main(args):
+    _logger.info('Torch version: %s', torch.__version__)
+    _logger.info('MASTER_PORT: %s', os.environ.get('MASTER_PORT', '{}'))
+    _logger.info('MASTER_ADDR: %s', os.environ.get('MASTER_ADDR', '{}'))
+    _logger.info('WORLD_SIZE: %s', os.environ.get('WORLD_SIZE', '{}'))
+    _logger.info('RANK: %s', os.environ.get('RANK', '{}'))
+    _logger.info('LOCAL_WORLD_SIZE: %s', os.environ.get('LOCAL_WORLD_SIZE', '{}'))
+    _logger.info('LOCAL_RANK: %s', os.environ.get('LOCAL_RANK', '{}'))
+    
     _logger.info('args:\n - %s', '\n - '.join(str(it) for it in args.__dict__.items()))
 
     if args.file_fraction < 1:
@@ -815,11 +820,7 @@ def main(args):
             torch.cuda.set_device(local_rank)
             gpus = [local_rank]
             dev = torch.device(local_rank)
-            torch.distributed.init_process_group(
-                backend=args.backend, 
-                rank=int(os.environ['RANK']), 
-                world_size=int(os.environ['WORLD_SIZE'])
-            )
+            torch.distributed.init_process_group(backend=args.backend)
             _logger.info(f'Using distributed PyTorch with {args.backend} backend')
         else:
             gpus = [int(i) for i in args.gpus.split(',')]
@@ -1034,6 +1035,7 @@ if __name__ == '__main__':
         args.predict_gpus = args.gpus
 
     args.local_rank = None if args.backend is None else int(os.environ.get("LOCAL_RANK", "0"))
+    args.rank = None if args.backend is None else int(os.environ.get("RANK", "0"))
 
     stdout = sys.stdout
     if args.local_rank is not None:
