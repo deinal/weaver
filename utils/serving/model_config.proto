@@ -20,10 +20,20 @@ message ModelOutput {
     repeated int64 dims = 3;
 }
 
+message Graph {
+    int32 level = 1;
+}
+
+message Optimization {
+    Graph graph = 1;
+}
+
 message ModelConfig {
     string platform = 1;
     int32 max_batch_size = 2;
 
     repeated ModelInput input = 3;
     repeated ModelOutput output = 4;
+    
+    Optimization optimization = 5;
 }

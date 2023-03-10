@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='utils/serving/model_config.proto',
   package='inference',
   syntax='proto3',
-  serialized_pb=_b('\n utils/serving/model_config.proto\x12\tinference\"P\n\nModelInput\x12\x0c\n\x04name\x18\x01 \x01(\t\x12&\n\tdata_type\x18\x02 \x01(\x0e\x32\x13.inference.DataType\x12\x0c\n\x04\x64ims\x18\x03 \x03(\x03\"Q\n\x0bModelOutput\x12\x0c\n\x04name\x18\x01 \x01(\t\x12&\n\tdata_type\x18\x02 \x01(\x0e\x32\x13.inference.DataType\x12\x0c\n\x04\x64ims\x18\x03 \x03(\x03\"\x85\x01\n\x0bModelConfig\x12\x10\n\x08platform\x18\x01 \x01(\t\x12\x16\n\x0emax_batch_size\x18\x02 \x01(\x05\x12$\n\x05input\x18\x03 \x03(\x0b\x32\x15.inference.ModelInput\x12&\n\x06output\x18\x04 \x03(\x0b\x32\x16.inference.ModelOutput*+\n\x08\x44\x61taType\x12\x10\n\x0cTYPE_INVALID\x10\x00\x12\r\n\tTYPE_FP32\x10\x01\x62\x06proto3')
+  serialized_pb=_b('\n utils/serving/model_config.proto\x12\tinference\"P\n\nModelInput\x12\x0c\n\x04name\x18\x01 \x01(\t\x12&\n\tdata_type\x18\x02 \x01(\x0e\x32\x13.inference.DataType\x12\x0c\n\x04\x64ims\x18\x03 \x03(\x03\"Q\n\x0bModelOutput\x12\x0c\n\x04name\x18\x01 \x01(\t\x12&\n\tdata_type\x18\x02 \x01(\x0e\x32\x13.inference.DataType\x12\x0c\n\x04\x64ims\x18\x03 \x03(\x03\"\x16\n\x05Graph\x12\r\n\x05level\x18\x01 \x01(\x05\"/\n\x0cOptimization\x12\x1f\n\x05graph\x18\x01 \x01(\x0b\x32\x10.inference.Graph\"\xb4\x01\n\x0bModelConfig\x12\x10\n\x08platform\x18\x01 \x01(\t\x12\x16\n\x0emax_batch_size\x18\x02 \x01(\x05\x12$\n\x05input\x18\x03 \x03(\x0b\x32\x15.inference.ModelInput\x12&\n\x06output\x18\x04 \x03(\x0b\x32\x16.inference.ModelOutput\x12-\n\x0coptimization\x18\x05 \x01(\x0b\x32\x17.inference.Optimization*+\n\x08\x44\x61taType\x12\x10\n\x0cTYPE_INVALID\x10\x00\x12\r\n\tTYPE_FP32\x10\x01\x62\x06proto3')
 )
 
 _DATATYPE = _descriptor.EnumDescriptor(
@@ -40,8 +40,8 @@ _DATATYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=348,
-  serialized_end=391,
+  serialized_start=468,
+  serialized_end=511,
 )
 _sym_db.RegisterEnumDescriptor(_DATATYPE)
 
@@ -141,6 +141,68 @@ _MODELOUTPUT = _descriptor.Descriptor(
 )
 
 
+_GRAPH = _descriptor.Descriptor(
+  name='Graph',
+  full_name='inference.Graph',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='level', full_name='inference.Graph.level', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=212,
+  serialized_end=234,
+)
+
+
+_OPTIMIZATION = _descriptor.Descriptor(
+  name='Optimization',
+  full_name='inference.Optimization',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='graph', full_name='inference.Optimization.graph', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=236,
+  serialized_end=283,
+)
+
+
 _MODELCONFIG = _descriptor.Descriptor(
   name='ModelConfig',
   full_name='inference.ModelConfig',
@@ -176,6 +238,13 @@ _MODELCONFIG = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='optimization', full_name='inference.ModelConfig.optimization', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -188,16 +257,20 @@ _MODELCONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=213,
-  serialized_end=346,
+  serialized_start=286,
+  serialized_end=466,
 )
 
 _MODELINPUT.fields_by_name['data_type'].enum_type = _DATATYPE
 _MODELOUTPUT.fields_by_name['data_type'].enum_type = _DATATYPE
+_OPTIMIZATION.fields_by_name['graph'].message_type = _GRAPH
 _MODELCONFIG.fields_by_name['input'].message_type = _MODELINPUT
 _MODELCONFIG.fields_by_name['output'].message_type = _MODELOUTPUT
+_MODELCONFIG.fields_by_name['optimization'].message_type = _OPTIMIZATION
 DESCRIPTOR.message_types_by_name['ModelInput'] = _MODELINPUT
 DESCRIPTOR.message_types_by_name['ModelOutput'] = _MODELOUTPUT
+DESCRIPTOR.message_types_by_name['Graph'] = _GRAPH
+DESCRIPTOR.message_types_by_name['Optimization'] = _OPTIMIZATION
 DESCRIPTOR.message_types_by_name['ModelConfig'] = _MODELCONFIG
 DESCRIPTOR.enum_types_by_name['DataType'] = _DATATYPE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -215,6 +288,20 @@ ModelOutput = _reflection.GeneratedProtocolMessageType('ModelOutput', (_message.
   # @@protoc_insertion_point(class_scope:inference.ModelOutput)
   ))
 _sym_db.RegisterMessage(ModelOutput)
+
+Graph = _reflection.GeneratedProtocolMessageType('Graph', (_message.Message,), dict(
+  DESCRIPTOR = _GRAPH,
+  __module__ = 'utils.serving.model_config_pb2'
+  # @@protoc_insertion_point(class_scope:inference.Graph)
+  ))
+_sym_db.RegisterMessage(Graph)
+
+Optimization = _reflection.GeneratedProtocolMessageType('Optimization', (_message.Message,), dict(
+  DESCRIPTOR = _OPTIMIZATION,
+  __module__ = 'utils.serving.model_config_pb2'
+  # @@protoc_insertion_point(class_scope:inference.Optimization)
+  ))
+_sym_db.RegisterMessage(Optimization)
 
 ModelConfig = _reflection.GeneratedProtocolMessageType('ModelConfig', (_message.Message,), dict(
   DESCRIPTOR = _MODELCONFIG,

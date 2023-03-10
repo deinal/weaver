@@ -455,6 +455,13 @@ def onnx(args, model, data_config, model_info):
                 dims = dims[1:]
             model_output.dims.extend(dims)
 
+        optimization = model_config_pb2.Optimization()
+        graph = model_config_pb2.Graph()
+        graph.level = -1
+        optimization.graph.CopyFrom(graph)
+
+        model_config.optimization.CopyFrom(optimization)
+
         if args.triton_config.startswith('s3'):
             with s3.open(args.triton_config, 'w') as f:
                 text_format.PrintMessage(model_config, f, use_short_repeated_primitives=True)
